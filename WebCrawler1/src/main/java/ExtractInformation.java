@@ -6,9 +6,13 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import java.io.IOException;
 
+
+
 public class ExtractInformation {
-	public static void  main(String[] args) throws InterruptedException, IOException{
-		
+	
+	public static void  main(String[] args) throws InterruptedException, IOException{				
+
+	    
 		String doclink="https://www.sunnyportal.com";  //domain name of the webpage
 		Document doc=null;
 		doc=Jsoup.connect(doclink).get();  //creates a new connection,fetches and parses the HTML file
