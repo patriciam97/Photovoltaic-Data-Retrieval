@@ -1,28 +1,35 @@
 import java.util.Arrays;
+import java.util.List;
 
 import org.bson.Document;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.MongoClient;
-import com.mongodb.client.MongoDatabase;
+
 
 public class Database {
 
 	public static void main(String[] args) {
 		// connecting to the database
-		MongoClient mongoClient = new MongoClient("ds255260.mlab.com", 55260);
-		MongoDatabase db = mongoClient.getDatabase("sunnyportal");
-		 Document doc = new Document("name", "MongoDB")
-         .append("type", "database")
-         .append("count", 1)
-         .append("versions", Arrays.asList("v3.2", "v3.0", "v2.6"))
-         .append("info", new Document("x", 203).append("y", 102));
-		 
-		 MongoCollection<Document> collection = db.getCollection("test");
-		 collection.insertOne(doc);
-
+		MongoClientURI uri=new MongoClientURI("mongodb://patriciam97:patri2256@ds255260.mlab.com:55260/sunnyportal");
+		MongoClient mongoClient = new MongoClient(uri);
+		DB db = mongoClient.getDB("sunnyportal");
+		DBCollection collection= db.getCollection("test");
+		List<Integer> books = Arrays.asList(27464, 747854);
+		DBObject person = new BasicDBObject("_id", "jo")
+		                            .append("name", "Jo Bloggs")
+		                            .append("address", new BasicDBObject("street", "123 Fake St")
+		                                                         .append("city", "Faketon")
+		                                                         .append("state", "MA")
+		                                                         .append("zip", 12345))
+		                            .append("books", books);
+		collection.insert(person);
 	}
 
 }
