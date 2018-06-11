@@ -4,15 +4,19 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
+import com.mongodb.MongoClient;
+import com.mongodb.client.MongoDatabase;
+
 import java.io.IOException;
-
-
 
 public class ExtractInformation {
 	
 	public static void  main(String[] args) throws InterruptedException, IOException{				
+		//connecting to the database
+		MongoClient mongoClient = new MongoClient( "ds255260.mlab.com" , 55260 );
+		MongoDatabase database = mongoClient.getDatabase("sunnyportal");
 
-	    
 		String doclink="https://www.sunnyportal.com";  //domain name of the webpage
 		Document doc=null;
 		doc=Jsoup.connect(doclink).get();  //creates a new connection,fetches and parses the HTML file
