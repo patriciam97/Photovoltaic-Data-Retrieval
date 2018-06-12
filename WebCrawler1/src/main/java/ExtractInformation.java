@@ -9,7 +9,7 @@ import org.jsoup.select.Elements;
 public class ExtractInformation {
 	private static Document doc = null;
 	public static ArrayList<String> urls= new ArrayList<String>();
-	public static void main(String[] args) throws IOException, InterruptedException{
+	public static ArrayList<String> main(String[] args) throws IOException, InterruptedException{
 		Connect();
 		Thread.sleep(4000);
 		ExtractUrls();
@@ -17,7 +17,7 @@ public class ExtractInformation {
 //		for (int i=0;i<urls.size();i++){
 //		System.out.println(urls.get(i));
 //		}
-
+		return urls;
 	}
 	public static void Connect() {
 		//connects to the website 
