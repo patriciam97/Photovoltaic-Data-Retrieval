@@ -9,15 +9,16 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 public class DirectoryCrawler {
-	public static String url;
-	public String Country;
-	public static int maxPages;
-	public static Document doc;
-	public ArrayList<String> urls;
-
+	private static String url;
+	private String Country;
+	private static int maxPages;
+	private static Document doc;
+	private ArrayList<String> urls= new ArrayList<String>();
+	private ArrayList<String> fullurls = new ArrayList<String>();
 	public DirectoryCrawler(String url, String maxPgs, String Country) {
 		this.url = url;
-		if (maxPgs == "ALL" || maxPgs == "all" || maxPgs == "All") {
+		maxPgs=maxPgs.toLowerCase();
+		if ( maxPgs == "all" ) {
 			this.maxPages = getMaximumPages();
 		} else {
 			this.maxPages = Integer.parseInt(maxPgs);
@@ -42,15 +43,11 @@ public class DirectoryCrawler {
 		}
 		this.urls = ManipulateUrls(); // path to each PV System Profile
 		System.out.println("Urls extracted.");
-		for(int i=0;i<urls.size();i++){
-			System.out.println("hi");
-			System.out.println(urls.get(i).toString());
-		}
 		return urls;
 	}
 
 	public static void ConnectToEachPage(int pg) {
-		String link = url + "?PageIndex=" + pg;
+		String link = url + "PageIndex=" + pg;
 		System.out.println("Connecting to page: " + pg);
 		try {
 			doc = Jsoup.connect(link).get();
@@ -61,20 +58,18 @@ public class DirectoryCrawler {
 	}
 
 	public void ExtractUrls() {
-		ArrayList<String> urlsfull = new ArrayList<String>();
 		Elements reportContent;
 		// extracts the url for each PV System Profile
 		// Select all elements with an href tag
-
 		reportContent = doc
 				.select("table[class=base-grid] tr[class^=base-grid-item]");
 		for (Element el : reportContent) {
 			String temp = el.select("td span").text();
 			if (temp.compareTo(this.Country) == 0) {
-				urlsfull.add(el.select("td a[href]").text());
+				fullurls.add(el.select("td a[href]").get(0).attr("href").toString());
 			}
 		}
-		this.urls = urlsfull;
+		this.urls = fullurls;
 
 	}
 
@@ -84,7 +79,6 @@ public class DirectoryCrawler {
 		String substrings[] = null;
 		for (int i = 0; i < urls.size(); i++) {
 			if (urls.get(i).toString().contains("OpenPlant")) {
-				///////////////////////////////////////////////////////
 				// splits the original url we have extracted at these characters
 				substrings = urls.get(i).split("[?']");
 				// substring[2] corresponds to the one we want
