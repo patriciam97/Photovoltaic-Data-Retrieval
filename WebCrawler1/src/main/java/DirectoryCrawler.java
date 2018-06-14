@@ -15,6 +15,7 @@ public class DirectoryCrawler {
 	private static Document doc;
 	private ArrayList<String> urls= new ArrayList<String>();
 	private ArrayList<String> fullurls = new ArrayList<String>();
+	private static int counter=0;
 	public DirectoryCrawler(String url, String maxPgs, String Country) {
 		this.url = url;
 		maxPgs=maxPgs.toLowerCase();
@@ -23,7 +24,7 @@ public class DirectoryCrawler {
 		} else {
 			this.maxPages = Integer.parseInt(maxPgs);
 		}
-		this.Country = Country;
+		this.Country = Country.toLowerCase();
 	}
 
 	public static int getMaximumPages() {
@@ -38,17 +39,18 @@ public class DirectoryCrawler {
 
 	public ArrayList<String> GetUrls() {
 		for (int i = 0; i < maxPages; i++) {
+			counter=0;
 			ConnectToEachPage(i);
 			ExtractUrls();
+			System.out.println("Extracted "+ counter + " urls from page "+ (i+1)+".");
 		}
 		this.urls = ManipulateUrls(); // path to each PV System Profile
-		System.out.println("Urls extracted.");
 		return urls;
 	}
 
 	public static void ConnectToEachPage(int pg) {
 		String link = url + "PageIndex=" + pg;
-		System.out.println("Connecting to page: " + pg);
+		System.out.println("Connecting to page: " + (pg+1));
 		try {
 			doc = Jsoup.connect(link).get();
 		} catch (IOException e) {
@@ -61,12 +63,22 @@ public class DirectoryCrawler {
 		Elements reportContent;
 		// extracts the url for each PV System Profile
 		// Select all elements with an href tag
-		reportContent = doc
-				.select("table[class=base-grid] tr[class^=base-grid-item]");
-		for (Element el : reportContent) {
-			String temp = el.select("td span").text();
-			if (temp.compareTo(this.Country) == 0) {
-				fullurls.add(el.select("td a[href]").get(0).attr("href").toString());
+		if (Country.equals("all")==false){
+			reportContent = doc
+					.select("table[class=base-grid] tr[class^=base-grid-item]");
+			for (Element el : reportContent) {
+					String temp = el.select("td span").text().toLowerCase();
+					if (temp.compareTo(this.Country) == 0) {
+						counter++;
+						fullurls.add(el.select("td a[href]").get(0).attr("href").toString());
+					}
+			}
+		}else{
+			reportContent = doc.select("table[class=base-grid] tr td a[href]"); 
+			for (Element el : reportContent) {
+				String link=el.attr("href").toString();
+				counter++;
+				fullurls.add(link);
 			}
 		}
 		this.urls = fullurls;
