@@ -13,20 +13,22 @@ public class WebCrawler {
 		String configtxt="configurations.txt";
 		Database db= new Database(configtxt);
 		dbConn=db.getConnection();
-		//DirectoryCrawler Dc= new DirectoryCrawler(url,maxPages,Country);
-		//ArrayList<String> urls=Dc.GetUrls();
-//		if(urls.size()>0){
-//			System.out.println(urls.size()+" Urls have been extracted.");
-////			for(int i=0;i<urls.size();i++){
-////				System.out.println(urls.get(i).toString());
-////			}
-//		}else{
-//			System.out.println("No Urls have been extracted.");
-//		}
-//		for (int i=0;i<urls.size();i++){
-//			PVSystemCrawler prof= new PVSystemCrawler(dbConn,urls.get(i));
-//		}
-		PVSystemCrawler prof= new PVSystemCrawler(dbConn,"plant=c6eb1890-b137-429a-967b-068203e2c6f4&splang=");
+		DirectoryCrawler Dc= new DirectoryCrawler(url,maxPages,Country);
+		ArrayList<String> urls=Dc.GetUrls();
+		ArrayList<String> powerlist=Dc.getPowerList();
+		if(urls.size()>0){
+			if (urls.size()<2){
+				System.out.println(urls.size()+" Url have been extracted.");
+			}else{
+				System.out.println(urls.size()+" Urls have been extracted.");
+			}
+		}else{
+			System.out.println("No Urls have been extracted.");
+		}
+		for (int i=0;i<urls.size();i++){
+			PVSystemCrawler prof= new PVSystemCrawler(dbConn,urls.get(i),powerlist.get(i));
+		}
+		System.out.println("Saved.");
 		
 	}
 

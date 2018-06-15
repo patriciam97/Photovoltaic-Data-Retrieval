@@ -15,6 +15,7 @@ public class DirectoryCrawler {
 	private static Document doc;
 	private ArrayList<String> urls= new ArrayList<String>();
 	private ArrayList<String> fullurls = new ArrayList<String>();
+	private ArrayList<String> powerList = new ArrayList<String>();
 	private static int counter=0;
 	public DirectoryCrawler(String url, String maxPgs, String Country) {
 		this.url = url;
@@ -47,7 +48,10 @@ public class DirectoryCrawler {
 		this.urls = ManipulateUrls(); // path to each PV System Profile
 		return urls;
 	}
-
+	public ArrayList<String> getPowerList(){
+		return powerList;
+		
+	}
 	public static void ConnectToEachPage(int pg) {
 		String link = url + "PageIndex=" + pg;
 		System.out.println("Connecting to page: " + (pg+1));
@@ -70,6 +74,7 @@ public class DirectoryCrawler {
 					String temp = el.select("td span").text().toLowerCase();
 					if (temp.compareTo(this.Country) == 0) {
 						counter++;
+						powerList.add(el.select("[align=right]").get(0).text().toString());
 						fullurls.add(el.select("td a[href]").get(0).attr("href").toString());
 					}
 			}
@@ -78,6 +83,7 @@ public class DirectoryCrawler {
 			for (Element el : reportContent) {
 				String link=el.attr("href").toString();
 				counter++;
+				powerList.add(el.select("[align=right]").get(0).text().toString());
 				fullurls.add(link);
 			}
 		}
@@ -92,9 +98,9 @@ public class DirectoryCrawler {
 		for (int i = 0; i < urls.size(); i++) {
 			if (urls.get(i).toString().contains("OpenPlant")) {
 				// splits the original url we have extracted at these characters
-				substrings = urls.get(i).split("[?']");
+				substrings = urls.get(i).split("[=&]");
 				// substring[2] corresponds to the one we want
-				updatedUrls.add(substrings[2]);
+				updatedUrls.add(substrings[1]);
 			}
 		}
 		return updatedUrls;
