@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 public class WebCrawler {
 	public static String Country;  //desired country selected by the user
@@ -6,7 +7,7 @@ public class WebCrawler {
 	public static int SleepLimit;
 	public static String dbConn;
 	public static String url="https://www.sunnyportal.com/Templates/publicPagesPlantList.aspx?";
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, ParseException {
 		Country=args[0];
 		maxPages=args[1];
 		SleepLimit=20;
@@ -17,7 +18,7 @@ public class WebCrawler {
 		ArrayList<String> urls=Dc.GetUrls();
 		ArrayList<String> powerlist=Dc.getPowerList();
 		if(urls.size()>0){
-			if (urls.size()<2){
+			if (urls.size()==1){
 				System.out.println(urls.size()+" Url have been extracted.");
 			}else{
 				System.out.println(urls.size()+" Urls have been extracted.");
@@ -28,8 +29,7 @@ public class WebCrawler {
 		for (int i=0;i<urls.size();i++){
 			PVSystemCrawler prof= new PVSystemCrawler(dbConn,urls.get(i),powerlist.get(i));
 		}
-		System.out.println("Saved.");
-		
+		//PVSystemCrawler prof= new PVSystemCrawler(dbConn,"44e3ddfb-c8fd-431e-a14c-635dfced1e12","efdsf");
 	}
 
 
