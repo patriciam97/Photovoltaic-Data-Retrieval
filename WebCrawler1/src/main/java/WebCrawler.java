@@ -33,7 +33,7 @@ public class WebCrawler {
 		}
 		//PVSystemCrawler prof= new PVSystemCrawler(dbConn,"3d89382c-deec-40dc-a105-d2b0cb4318b8","efdsf");
 		long estimatedTime = (System.nanoTime() - startTime)/ 1000000;
-		System.out.println("Elapsed Time: "+estimatedTime);
+		System.out.println("Elapsed Time: "+estimatedTime+" seconds.");
 	}
 
 

@@ -59,7 +59,7 @@ public class PVSystemCrawler {
 		//procedure ends here
 	}
 
-	public void getProfileInfo() throws IOException {
+	private void getProfileInfo() throws IOException {
 		/**this function gets the profile information
 		 * and saves them as the values of the global variables.
 		 */
@@ -110,7 +110,7 @@ public class PVSystemCrawler {
 		}
 	}
 
-	public String[] getUrlOfSubpage() throws IOException {
+	private String[] getUrlOfSubpage() throws IOException {
 		/**	this function gets the url of each subpage
 		 * 	@return      all urls that exist or "nosubpage" if none subpage exist 
 		 */
@@ -143,7 +143,7 @@ public class PVSystemCrawler {
 		return (returnval);
 	}
 
-	public void getMonthlyReadings(String plant, String[] subpages)
+	private void getMonthlyReadings(String plant, String[] subpages)
 			throws IOException, ParseException {
 		for (String page : subpages) {
 			url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?page="
@@ -172,7 +172,7 @@ public class PVSystemCrawler {
 		}
 	}
 
-	public void SaveReadings() throws IOException, ParseException {
+	private void SaveReadings() throws IOException, ParseException {
 		double powerR = 0;
 		now = Calendar.getInstance();
 		currentYear = now.get(Calendar.YEAR);
@@ -201,22 +201,17 @@ public class PVSystemCrawler {
 					for (Element el : elements) {
 						format = new SimpleDateFormat("MMM yy");
 						Date date = (Date)format.parse(el.select("td").get(0).text());
-						//String d=el.select("td").get(0).text();
-						//Timestamp ts = new Timestamp(((java.util.Date)format.parse(d).getTime());
 						Long timestamp = date.getTime();
 						String power=el.select("td").get(1).text();
 						if(power.isEmpty()==false){
 							powerR = Double.parseDouble(power);
 						}
-						//Metric obj= new Metric(timestamp,powerR);
-						//monthlyReadings.add(new BasicDBObject("timestamp",timestamp));
 						BasicDBObject bdbo = new BasicDBObject();
 						bdbo.append("timestamp", timestamp);
 						bdbo.append("value", powerR);
 						monthlyReadings.add(bdbo);
 					}
-					break;
-				}
+					}
 			}
 		}
 	}

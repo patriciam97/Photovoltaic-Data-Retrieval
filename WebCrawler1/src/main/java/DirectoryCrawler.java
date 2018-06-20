@@ -29,7 +29,7 @@ public class DirectoryCrawler {
 		this.Country = Country.toLowerCase();
 	}
 
-	public static int getMaximumPages() {
+	private static int getMaximumPages() {
 		int pg = 0;
 		Element table = doc
 				.getElementById("ctl00_ContentPlaceHolder1__dataGridPagerDown_PagerTable");
@@ -57,7 +57,7 @@ public class DirectoryCrawler {
 		return locList;
 		
 	}
-	public static void ConnectToEachPage(int pg) {
+	private static void ConnectToEachPage(int pg) {
 		String link = url + "PageIndex=" + pg;
 		System.out.println("Connecting to page: " + (pg+1));
 		try {
@@ -68,7 +68,7 @@ public class DirectoryCrawler {
 		}
 	}
 
-	public void ExtractUrls() {
+	private void ExtractUrls() {
 		Elements reportContent;
 		// extracts the url for each PV System Profile
 		// Select all elements with an href tag
@@ -97,7 +97,7 @@ public class DirectoryCrawler {
 
 	}
 
-	public ArrayList<String> ManipulateUrls() {
+	private ArrayList<String> ManipulateUrls() {
 		// extracts the path for each PV System Profile
 		ArrayList<String> updatedUrls = new ArrayList<String>();
 		String substrings[] = null;
