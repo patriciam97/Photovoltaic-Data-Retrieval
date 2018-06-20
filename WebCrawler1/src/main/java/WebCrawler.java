@@ -8,6 +8,7 @@ public class WebCrawler {
 	public static String dbConn;
 	public static String url="https://www.sunnyportal.com/Templates/publicPagesPlantList.aspx?";
 	public static void main(String[] args) throws IOException, ParseException {
+		long startTime = System.nanoTime();
 		Country=args[0];
 		maxPages=args[1];
 		SleepLimit=20;
@@ -17,6 +18,7 @@ public class WebCrawler {
 		DirectoryCrawler Dc= new DirectoryCrawler(url,maxPages,Country);
 		ArrayList<String> urls=Dc.GetUrls();
 		ArrayList<String> powerlist=Dc.getPowerList();
+		ArrayList<String> loclist=Dc.getLocationList();
 		if(urls.size()>0){
 			if (urls.size()==1){
 				System.out.println(urls.size()+" Url have been extracted.");
@@ -27,9 +29,11 @@ public class WebCrawler {
 			System.out.println("No Urls have been extracted.");
 		}
 		for (int i=0;i<urls.size();i++){
-			PVSystemCrawler prof= new PVSystemCrawler(dbConn,urls.get(i),powerlist.get(i));
+			PVSystemCrawler prof= new PVSystemCrawler(dbConn,urls.get(i),powerlist.get(i), loclist.get(i));
 		}
 		//PVSystemCrawler prof= new PVSystemCrawler(dbConn,"3d89382c-deec-40dc-a105-d2b0cb4318b8","efdsf");
+		long estimatedTime = (System.nanoTime() - startTime)/ 1000000;
+		System.out.println("Elapsed Time: "+estimatedTime);
 	}
 
 

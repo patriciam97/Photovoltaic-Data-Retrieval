@@ -3,6 +3,7 @@ import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -40,25 +41,29 @@ public class PVSystemCrawler {
 	private Calendar now;
 	private DateFormat format,formatter;
 
-	public PVSystemCrawler(String Conn, String plant, String power)
+	public PVSystemCrawler(String Conn, String plant, String power,String loc)
 			throws IOException, ParseException {
 		this.Conn = Conn;
 		this.plant = plant;
 		this.Power = power;
 		this.url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?plant="
 				+ plant + "&splang=";
-		now = Calendar.getInstance();
-		currentYear = now.get(Calendar.YEAR);
+		this.Location=loc;
+		//procedure starts here
 		getProfileInfo();
 		String[] subpages = getUrlOfSubpage();
-		if (subpages[0] != "nosubpage") {
+		if (subpages[0] != "nosubpage") { //if subpage doesn't exist, then readings dont exist
 			getMonthlyReadings(plant, subpages);
 		}
 		SaveInfo(Conn);
+		//procedure ends here
 	}
 
 	public void getProfileInfo() throws IOException {
-		doc = Jsoup.connect(url).get();
+		/**this function gets the profile information
+		 * and saves them as the values of the global variables.
+		 */
+		doc = Jsoup.connect(url).timeout(100000).get();
 		// extracting the title
 		elements = doc.select("head");
 		Owner = elements.get(0).text().toString();
@@ -67,6 +72,7 @@ public class PVSystemCrawler {
 				.select("td[class=PlantProfileCellLabel BoxRoundCornerLineVLeft]");
 		elementsval = doc
 				.select("td[class=PlantProfileCellValue BoxRoundCornerLineVRight]");
+		//extraction of any information available
 		for (int i = 0; i < elements.size(); i++) {
 			if (elements.get(i).text().equals("Location:")) {
 				Location = elementsval.get(i).text().toString();
@@ -97,6 +103,7 @@ public class PVSystemCrawler {
 		}
 		elementsval = doc.select("span");
 		descinfo = elementsval.get(3).text();
+		//extraction of the image if it exists
 		elements = doc.select("img[class=css3pie dropShadow]");
 		if (elements.size() > 0) {
 			imgLink = elements.get(0).attr("src").toString();
@@ -104,8 +111,11 @@ public class PVSystemCrawler {
 	}
 
 	public String[] getUrlOfSubpage() throws IOException {
+		/**	this function gets the url of each subpage
+		 * 	@return      all urls that exist or "nosubpage" if none subpage exist 
+		 */
 		String[] returnval = null;
-		doc = Jsoup.connect(url).get();
+		doc = Jsoup.connect(url).timeout(100000).get();
 		if (doc.select(
 				"#ctl00_ContentPlaceHolder1_PublicPagePlaceholder_PageUserControl_ctl00_UserControl1_OpenButtonsDivImg")
 				.size() > 0) {
@@ -164,6 +174,8 @@ public class PVSystemCrawler {
 
 	public void SaveReadings() throws IOException, ParseException {
 		double powerR = 0;
+		now = Calendar.getInstance();
+		currentYear = now.get(Calendar.YEAR);
 		url = "https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="
 				+ id
 				+ "&endTime=12/31/"
@@ -273,6 +285,8 @@ public class PVSystemCrawler {
 		
 
 		collection.insert(prof);
-		System.out.println("Information Saved for " + Owner);
+		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
+		LocalDateTime now = LocalDateTime.now();
+		System.out.println("Information Saved for " + Owner+" at "+dtf.format(now));
 	}
 }

@@ -16,6 +16,7 @@ public class DirectoryCrawler {
 	private ArrayList<String> urls= new ArrayList<String>();
 	private ArrayList<String> fullurls = new ArrayList<String>();
 	private ArrayList<String> powerList = new ArrayList<String>();
+	private ArrayList<String> locList = new ArrayList<String>();
 	private static int counter=0;
 	public DirectoryCrawler(String url, String maxPgs, String Country) {
 		this.url = url;
@@ -52,11 +53,15 @@ public class DirectoryCrawler {
 		return powerList;
 		
 	}
+	public ArrayList<String> getLocationList(){
+		return locList;
+		
+	}
 	public static void ConnectToEachPage(int pg) {
 		String link = url + "PageIndex=" + pg;
 		System.out.println("Connecting to page: " + (pg+1));
 		try {
-			doc = Jsoup.connect(link).get();
+			doc = Jsoup.connect(link).timeout(100000).get();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -75,6 +80,7 @@ public class DirectoryCrawler {
 					if (temp.compareTo(this.Country) == 0) {
 						counter++;
 						powerList.add(el.select("[align=right]").get(0).text().toString());
+						locList.add(el.select("td").get(4).text().toString());
 						fullurls.add(el.select("td a[href]").get(0).attr("href").toString());
 					}
 			}
