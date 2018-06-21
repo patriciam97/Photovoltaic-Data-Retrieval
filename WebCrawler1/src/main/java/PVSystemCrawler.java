@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -26,47 +27,54 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
-
+/**
+ * 
+ * @author patricia
+ *
+ */
 public class PVSystemCrawler {
-	private String Conn;
+	private String Conn,Country;
 	private String url, plant;
 	private String id, Owner, Location, Operator, StartDate, Power,
 			AnProduction, CO2, Modules, Azimuth, Inclination, Communication,
 			Inverter, Sensors, imgLink, readingsUnit;
 	private String descinfo;
-	private Document doc;
-	private Elements elements, elementsval;
-	private int StartingYear, currentYear;
+	private int StartingYear;
 	private List<BasicDBObject> monthlyReadings= new ArrayList<BasicDBObject>();
-	private Calendar now;
-	private DateFormat format,formatter;
+	/**
+	 * Constructor of each PV System
+	 * @param Conn		connection to the database
+	 * @param plant		path of each PVSystem
+	 * @param power 	power of the System
+	 * @param loc		location of the System(City)
+	 * @param Country	country in which the System is install
+	*/
+	public PVSystemCrawler(String Conn, String plant, String power,String loc,String Country){
 
-	public PVSystemCrawler(String Conn, String plant, String power,String loc)
-			throws IOException, ParseException {
 		this.Conn = Conn;
 		this.plant = plant;
 		this.Power = power;
 		this.url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?plant="
 				+ plant + "&splang=";
 		this.Location=loc;
-		//procedure starts here
-		getProfileInfo();
-		String[] subpages = getUrlOfSubpage();
-		if (subpages[0] != "nosubpage") { //if subpage doesn't exist, then readings dont exist
-			getMonthlyReadings(plant, subpages);
-		}
-		SaveInfo(Conn);
-		//procedure ends here
+		this.Country=Country;
 	}
-
-	private void getProfileInfo() throws IOException {
-		/**this function gets the profile information
-		 * and saves them as the values of the global variables.
-		 */
-		doc = Jsoup.connect(url).timeout(100000).get();
+	/**
+	 * this function gets the profile information
+	 * and saves them as the values of the global variables above.
+	 * @throws IOException
+	 */
+	public void getProfileInfo() throws IOException {
+		Elements elements,elementsval; //used for the selected elements.
+		
+		//connects to the url
+		Document doc = Jsoup.connect(url).timeout(100000).get();
 		// extracting the title
 		elements = doc.select("head");
 		Owner = elements.get(0).text().toString();
+		if (Owner.startsWith(".")){
+			Owner=Owner.split("[.]")[1]; //remove the dot
+		}
 		// extracting the location
 		elements = doc
 				.select("td[class=PlantProfileCellLabel BoxRoundCornerLineVLeft]");
@@ -109,13 +117,19 @@ public class PVSystemCrawler {
 			imgLink = elements.get(0).attr("src").toString();
 		}
 	}
+	/**
+	 * this function gets the url of each subpage
+	 * @return      all urls that exist or "nosubpage" if none subpage exist 
+	 * @throws IOException
+	 */
+	public String[] getUrlOfSubpage() throws IOException {
 
-	private String[] getUrlOfSubpage() throws IOException {
-		/**	this function gets the url of each subpage
-		 * 	@return      all urls that exist or "nosubpage" if none subpage exist 
-		 */
 		String[] returnval = null;
-		doc = Jsoup.connect(url).timeout(100000).get();
+		Elements elements; //used for the selected elements.
+		
+		//connects to the url
+		Document doc = Jsoup.connect(url).timeout(100000).get();
+		//if subpages exist
 		if (doc.select(
 				"#ctl00_ContentPlaceHolder1_PublicPagePlaceholder_PageUserControl_ctl00_UserControl1_OpenButtonsDivImg")
 				.size() > 0) {
@@ -124,10 +138,11 @@ public class PVSystemCrawler {
 				returnval = new String[elements.size()];
 				for (int i = 0; i < elements.size(); i++) {
 					String[] u = elements.get(i).id().toString().split("_");
-					returnval[i] = u[1];
+					returnval[i] = u[1]; //save the path to each subpage
 				}
 			}
-		} else {
+		} else { 
+			//subpages exist under this class too
 			elements = doc.select("li[class=nosub]");
 			if (elements.size() > 0) {
 				returnval = new String[elements.size()];
@@ -135,30 +150,43 @@ public class PVSystemCrawler {
 					String[] u = elements.get(i).id().toString().split("_");
 					returnval[i] = u[1];
 				}
-			} else {
+			} else { 
+				//if no subpages exist
 				returnval = new String[1];
 				returnval[0] = "nosubpage";
 			}
 		}
 		return (returnval);
 	}
-
-	private void getMonthlyReadings(String plant, String[] subpages)
+	/**
+	 * 
+	 * @param plant path of each PV System.
+	 * @param subpages paths to any subpage
+	 * @throws IOException
+	 * @throws ParseException
+	 */
+	public void getMonthlyReadings(String plant, String[] subpages)
 			throws IOException, ParseException {
+		Elements elements; //selected elements
+		Document doc;
+		
 		for (String page : subpages) {
 			url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?page="
 					+ page + "&plant=" + plant + "&splang=en-US";
+			//connect to each subpage
 			doc = Jsoup.connect(url).get();
+			//id of each PVSystem is stored under this ID.
 			elements = doc
 					.select("#ctl00_ContentPlaceHolder1_PublicPagePlaceholder_PageUserControl_ctl00_UserControl1_HyperLinkLup");
 			if (elements.size() > 0) {
 				String[] idA = doc
 						.select("#ctl00_ContentPlaceHolder1_PublicPagePlaceholder_PageUserControl_ctl00_UserControl1_HyperLinkLup")
 						.get(0).attr("onClick").toString().split("'");
-				id = idA[11];
-				SaveReadings();
+				id = idA[11]; //save the ID of each PV System
+				SaveReadings(); //saves the monthly readings.
 				break;
 			} else {
+				//if ID doesnt exist, get userid
 				elements = doc.select("script");
 				for (Element el : elements) {
 					if (el.html().contains("userid:")) {
@@ -171,24 +199,36 @@ public class PVSystemCrawler {
 			}
 		}
 	}
-
+	/**
+	 * this function saves the monthyReadings for a PV System(if available)
+	 * in a List of BasicDBObject.
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	private void SaveReadings() throws IOException, ParseException {
 		double powerR = 0;
-		now = Calendar.getInstance();
-		currentYear = now.get(Calendar.YEAR);
+		Elements elements;  //used for the selected elements
+		Calendar now = Calendar.getInstance();
+		int currentYear = now.get(Calendar.YEAR);
+		DecimalFormat df = new DecimalFormat("#.#####");
+		DateFormat format = new SimpleDateFormat("MMM yy");
+		Document doc;
+		
 		url = "https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="
 				+ id
 				+ "&endTime=12/31/"
 				+ currentYear
 				+ "%2011:59:59%20PM&splang=en-US&plantTimezoneBias=180&name=";
+		//connects to the url
 		doc = Jsoup.connect(url).get();
 		elements = doc.select("div.tabelle table tr td.base-grid-header-cell");
 		if(elements.size()==0){
-			getDailyReadings();
-			
+			getDailyReadings(); //chech for daily readings
 		}else{
-		readingsUnit = elements.get(1).text().split("\\[")[1].split("]")[0];
-			for (int i = StartingYear; i < currentYear + 1; i++) {
+		readingsUnit = elements.get(1).text().split("\\[")[1].split("]")[0]; //unit used for the readings
+			for (int i = StartingYear; i < currentYear + 1; i++) { 
+				//from the year, the System has been install, until now
+				//get all readings available
 				url = "https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="
 						+ id
 						+ "&endTime=12/31/"
@@ -199,74 +239,94 @@ public class PVSystemCrawler {
 						.select("div.tabelle table tr[class^=base-grid-item]");
 				if (elements.size() > 0) {
 					for (Element el : elements) {
-						format = new SimpleDateFormat("MMM yy");
 						Date date = (Date)format.parse(el.select("td").get(0).text());
+						//convert the date to timestamp(long integer)
 						Long timestamp = date.getTime();
+						//reading for the specific timestamp
 						String power=el.select("td").get(1).text();
-						if(power.isEmpty()==false){
+						if(power.isEmpty()==false){ 
+							// if column is empty, convert it to 0.
 							powerR = Double.parseDouble(power);
 						}
 						BasicDBObject bdbo = new BasicDBObject();
 						bdbo.append("timestamp", timestamp);
-						bdbo.append("value", powerR);
+						bdbo.append("value", df.format(powerR));
 						monthlyReadings.add(bdbo);
 					}
-					}
+				}
 			}
 		}
 	}
-
+	/**
+	 * this function is used only if the daily readings are available
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	private void getDailyReadings() throws IOException, ParseException {
 		double powerR;
-		int month = now.get(Calendar.MONTH);
-        int year = now.get(Calendar.YEAR);
-        now.clear();
+		Calendar now = Calendar.getInstance();
+		int month = now.get(Calendar.MONTH); //current month
+        int year = now.get(Calendar.YEAR); //current year
+        DecimalFormat df = new DecimalFormat("#.#####");
+        Elements elements = null;
+		DateFormat format = new SimpleDateFormat("MM/dd/yyyy");
+		Document doc;
+		
+        now.clear(); 
         do{
         	now.set(Calendar.YEAR, year);
         	powerR=0;
         	for (int currentMonth = month; currentMonth >0; currentMonth--) {
                 now.set(Calendar.MONTH, currentMonth-1);
-                //last day
+                //last day of month
                 int day=now.getActualMaximum(Calendar.DAY_OF_MONTH);
                 String date=currentMonth+"/"+day+"/"+year;
                 url="https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="+id+"&endTime="+date+"%2011:59:59%20PM&splang=en-US&plantTimezoneBias=180&name=";
+                //connect to the page with the daily readings for each month
                 doc=Jsoup.connect(url).get();
                 elements = doc
 						.select("div.tabelle table tr[class^=base-grid-item]");
 				if (elements.size() > 12) {
+					//if over 12, it means we have the daily ones
 					for (Element el : elements) {
 						String power=el.select("td").get(1).text();
 						if(power.isEmpty()==false){
-							powerR = powerR+Double.parseDouble(power);
+							powerR = powerR+Double.parseDouble(power); //add them together
 						}
 					}
-					format = new SimpleDateFormat("MM/dd/yyyy");
 					Date d = format.parse(date);
 					Long timestamp = d.getTime();
-					//monthlyReadings.add(new BasicDBObject("timestamp",timestamp));
 					BasicDBObject bdbo = new BasicDBObject();
 					bdbo.append("timestamp", timestamp);
-					bdbo.append("value", powerR);
+					bdbo.append("value", df.format(powerR));
 					monthlyReadings.add(bdbo);
 				}else{
+					// no daily readings are available
 					break;
 				}
             }
         	year=year-1;
         	month=12;
-        }while(elements.size()>0);
+        }while(elements.size()>0); //until we have information
 		
 	}
-
-	public void SaveInfo(String Connetion) {
-		MongoClientURI uri = new MongoClientURI(Connetion);
+	/**
+	 * Connects to the database and saves all information.
+	 */
+	public void SaveInfo() { 
+		MongoClientURI uri = new MongoClientURI(Conn);
 		MongoClient mongoClient = new MongoClient(uri);
 		DB db = mongoClient.getDB("sunnyportal");
 		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
 		mongoLogger.setLevel(Level.SEVERE);
-		DBCollection collection = db.getCollection("PVSystemProfiles");
+		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
+		LocalDateTime now = LocalDateTime.now();
+		DBCollection collection = db.getCollection(Country+"PVSystemProfiles");
+		// creating a document for the PV System
 		DBObject prof = new BasicDBObject("_id", plant).append("Owner", Owner)
-				.append("Location", Location).append("StartDate", StartDate)
+				.append("systemid", id)
+				.append("Location", Location)
+				.append("StartDate", StartDate)
 				.append("SystemPower", Power)
 				.append("SystemAnnualProduction", AnProduction)
 				.append("CO2", CO2).append("Azimuth", Azimuth)
@@ -277,11 +337,23 @@ public class PVSystemCrawler {
 				.append("descinfo", descinfo)
 				.append("readingsUnit", readingsUnit)
 				.append("monthlyReadings", monthlyReadings);
-		
+		//check if this document already exists
+		DBObject exists=collection.findOne(plant);
+		if (exists!=null){ 
+			//if it exists
+			if (exists.equals(prof)){
+				//if it is the same
+				System.out.println(dtf.format(now)+": "+Owner+" is up to date.");
+			}else{
+				//needs to be updated
+				collection.update(exists,prof);
+				System.out.println(dtf.format(now)+": "+Owner+ " updated.");
+			}
+		}else{
+			//if it doesnt exist, insert it
+			collection.insert(prof);
+			System.out.println(dtf.format(now)+": "+Owner+" saved.");
+		}
 
-		collection.insert(prof);
-		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
-		LocalDateTime now = LocalDateTime.now();
-		System.out.println("Information Saved for " + Owner+" at "+dtf.format(now));
 	}
 }
