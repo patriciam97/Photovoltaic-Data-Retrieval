@@ -29,13 +29,13 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 /**
  * 
- * @author patricia
+ * @author Patricia M
  *
  */
 public class PVSystemCrawler {
 	private String Conn,Country;
 	private String url, plant;
-	private String id, Owner, Location, Operator, StartDate, Power,
+	private String id, SystemTitle, City,Zipcode, Operator, StartDate, Power,
 			AnProduction, CO2, Modules, Azimuth, Inclination, Communication,
 			Inverter, Sensors, imgLink, readingsUnit;
 	private String descinfo;
@@ -49,15 +49,17 @@ public class PVSystemCrawler {
 	 * @param loc		location of the System(City)
 	 * @param Country	country in which the System is install
 	*/
-	public PVSystemCrawler(String Conn, String plant, String power,String loc,String Country){
+	public PVSystemCrawler(String Conn, String plant,String SystemTitle, String power,String city,String Country,String zipcode){
 
 		this.Conn = Conn;
 		this.plant = plant;
+		this.SystemTitle = SystemTitle;
 		this.Power = power;
 		this.url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?plant="
 				+ plant + "&splang=";
-		this.Location=loc;
+		this.City=city;
 		this.Country=Country;
+		this.Zipcode=zipcode;
 	}
 	/**
 	 * this function gets the profile information
@@ -69,12 +71,6 @@ public class PVSystemCrawler {
 		
 		//connects to the url
 		Document doc = Jsoup.connect(url).timeout(100000).get();
-		// extracting the title
-		elements = doc.select("head");
-		Owner = elements.get(0).text().toString();
-		if (Owner.startsWith(".")){
-			Owner=Owner.split("[.]")[1]; //remove the dot
-		}
 		// extracting the location
 		elements = doc
 				.select("td[class=PlantProfileCellLabel BoxRoundCornerLineVLeft]");
@@ -83,7 +79,7 @@ public class PVSystemCrawler {
 		//extraction of any information available
 		for (int i = 0; i < elements.size(); i++) {
 			if (elements.get(i).text().equals("Location:")) {
-				Location = elementsval.get(i).text().toString();
+				City = elementsval.get(i).text().toString();
 			} else if (elements.get(i).text().equals("Operator:")) {
 				Operator = elementsval.get(i).text();
 			} else if (elements.get(i).text().equals("Commissioning:")) {
@@ -115,11 +111,14 @@ public class PVSystemCrawler {
 		elements = doc.select("img[class=css3pie dropShadow]");
 		if (elements.size() > 0) {
 			imgLink = elements.get(0).attr("src").toString();
+			if (imgLink.startsWith("..")){
+				imgLink=imgLink.split("[.]")[2];
+			}
 		}
 	}
 	/**
 	 * this function gets the url of each subpage
-	 * @return      all urls that exist or "nosubpage" if none subpage exist 
+	 * @return      all urls that exist or "nosubpage" if no subpage exist 
 	 * @throws IOException
 	 */
 	public String[] getUrlOfSubpage() throws IOException {
@@ -323,9 +322,11 @@ public class PVSystemCrawler {
 		LocalDateTime now = LocalDateTime.now();
 		DBCollection collection = db.getCollection(Country+"PVSystemProfiles");
 		// creating a document for the PV System
-		DBObject prof = new BasicDBObject("_id", plant).append("Owner", Owner)
+		DBObject prof = new BasicDBObject("_id", plant).append("System", SystemTitle)
 				.append("systemid", id)
-				.append("Location", Location)
+				.append("Country", Country)
+				.append("City", City)
+				.append("ZipCodee", Zipcode)
 				.append("StartDate", StartDate)
 				.append("SystemPower", Power)
 				.append("SystemAnnualProduction", AnProduction)
@@ -343,16 +344,17 @@ public class PVSystemCrawler {
 			//if it exists
 			if (exists.equals(prof)){
 				//if it is the same
-				System.out.println(dtf.format(now)+": "+Owner+" is up to date.");
+				System.out.println();
+				System.out.println(dtf.format(now)+": "+SystemTitle+" is up to date.");
 			}else{
 				//needs to be updated
 				collection.update(exists,prof);
-				System.out.println(dtf.format(now)+": "+Owner+ " updated.");
+				System.out.println(dtf.format(now)+": "+SystemTitle+ " updated.");
 			}
 		}else{
 			//if it doesnt exist, insert it
 			collection.insert(prof);
-			System.out.println(dtf.format(now)+": "+Owner+" saved.");
+			System.out.println(dtf.format(now)+": "+SystemTitle+" saved.");
 		}
 
 	}
