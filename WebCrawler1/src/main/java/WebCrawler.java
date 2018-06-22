@@ -38,6 +38,7 @@ public class WebCrawler {
 		ArrayList<String> powerlist=Dc.getPowerList(); //their power
 		ArrayList<String> citylist=Dc.getCityList(); //their location
 		ArrayList<String> zipcodelist=Dc.getZipCodeList(); //their location
+		System.out.println(urls.toString());
 		if(Country.toLowerCase().equals("all")){
 			countrylist=Dc.getCountryList(); //their location
 		}

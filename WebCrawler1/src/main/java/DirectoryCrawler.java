@@ -62,7 +62,8 @@ public class DirectoryCrawler {
 	    if(pg==-1){
 	    	eT="";
 	    }else{
-	    	eT="ctl00$ContentPlaceHolder1$_dataGridPagerUp$ClickPageNo"+(pg);
+	    	//error here doesnt go onto next pg
+	    	eT="ctl00$ContentPlaceHolder1$_dataGridPagerUp$ClickPageNo"+(pg+1);
 	    }
 	    if (country.toLowerCase().equals("all")){
 	    	country="";
@@ -180,8 +181,10 @@ public class DirectoryCrawler {
 			reportContent = doc
 					.select("table[class=base-grid] tr[class^=base-grid-item]");
 			for (Element el : reportContent) {
-						getDetails(el);
-						fullurls.add(el.select("td a[href]").get(0).attr("href").toString());
+						if(fullurls.contains(el.select("td a[href]").get(0).attr("href").toString())==false){
+							getDetails(el);
+							fullurls.add(el.select("td a[href]").get(0).attr("href").toString());
+						}
 			}
 		}else{ //if we are looking for all countries
 			reportContent = doc.select("table[class=base-grid] tr td a[href]"); 
