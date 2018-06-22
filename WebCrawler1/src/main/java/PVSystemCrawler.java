@@ -190,6 +190,7 @@ public class PVSystemCrawler {
 				for (Element el : elements) {
 					if (el.html().contains("userid:")) {
 						id = (el.html().split("userid:")[1].split("'")[1]);
+						System.out.println(id);
 						SaveReadings();
 					}
 					break;
@@ -222,7 +223,7 @@ public class PVSystemCrawler {
 		doc = Jsoup.connect(url).get();
 		elements = doc.select("div.tabelle table tr td.base-grid-header-cell");
 		if(elements.size()==0){
-			getDailyReadings(); //chech for daily readings
+			getDailyReadings(); //check for daily readings
 		}else{
 		readingsUnit = elements.get(1).text().split("\\[")[1].split("]")[0]; //unit used for the readings
 			for (int i = StartingYear; i < currentYear + 1; i++) { 
@@ -326,7 +327,7 @@ public class PVSystemCrawler {
 				.append("systemid", id)
 				.append("Country", Country)
 				.append("City", City)
-				.append("ZipCodee", Zipcode)
+				.append("ZipCode", Zipcode)
 				.append("StartDate", StartDate)
 				.append("SystemPower", Power)
 				.append("SystemAnnualProduction", AnProduction)
@@ -344,7 +345,6 @@ public class PVSystemCrawler {
 			//if it exists
 			if (exists.equals(prof)){
 				//if it is the same
-				System.out.println();
 				System.out.println(dtf.format(now)+": "+SystemTitle+" is up to date.");
 			}else{
 				//needs to be updated
