@@ -190,7 +190,6 @@ public class PVSystemCrawler {
 				for (Element el : elements) {
 					if (el.html().contains("userid:")) {
 						id = (el.html().split("userid:")[1].split("'")[1]);
-						System.out.println(id);
 						SaveReadings();
 					}
 					break;

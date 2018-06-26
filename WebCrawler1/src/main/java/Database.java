@@ -51,5 +51,4 @@ public class Database {
 	public String getConnection(){
 		return "mongodb://"+username+":"+password+"@"+host+":"+port+"/"+database;
 	}
-
 }
