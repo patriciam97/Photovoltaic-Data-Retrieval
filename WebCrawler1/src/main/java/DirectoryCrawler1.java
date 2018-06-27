@@ -1,14 +1,17 @@
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
- import org.jsoup.nodes.Element;
- import org.jsoup.select.Elements;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -25,7 +28,7 @@ import com.mongodb.MongoClientURI;
  public class DirectoryCrawler1 {
  	private static String url;
  	private String Conn;
- 	private int maxPgs;
+ 	private static int maxPgs;
  	private ArrayList<String> urls= new ArrayList<String>();
  	private ArrayList<String> fullurls = new ArrayList<String>();
  	private ArrayList<String> powerList = new ArrayList<String>();
@@ -42,10 +45,13 @@ import com.mongodb.MongoClientURI;
 	 * @param Country country we are investigating
 	 * @throws IOException 
 	 */
- 	public DirectoryCrawler1(String Conn,String url,String pg) throws IOException {
+ 	public DirectoryCrawler1(String Conn,String url,String maxPgs) throws IOException {
  		this.url = url;
- 		//maxPgs=getMaximumPages(url);
- 		this.maxPgs=Integer.parseInt(pg);
+// 		if(maxPgs.toLowerCase().equals("all")){
+// 			this.maxPgs=getMaximumPages(url);
+// 		}else{
+// 			this.maxPgs=Integer.parseInt(maxPgs);
+// 		}
  		this.Conn=Conn;
  	}
 
@@ -53,7 +59,7 @@ import com.mongodb.MongoClientURI;
 	 * 
 	 * @return pg maximum number of pages
 	 */
-	private static int getMaximumPages(String url) throws IOException {
+	public static int getMaximumPages(String url) throws IOException {
 		
 		int pg = 0;
 		doc= Jsoup.connect(url).timeout(100000).get();
@@ -62,6 +68,7 @@ import com.mongodb.MongoClientURI;
 		// the last element is the total number of the pages
 		pg = Integer.parseInt(pages.last().text());
 		System.out.println("Total num of pages: "+pg);
+		maxPgs=pg;
 		return pg+1;
 	}
 
@@ -69,14 +76,14 @@ import com.mongodb.MongoClientURI;
 	 * 
 	 * @return urls of all systems from the Directory page
 	 */
- 	public ArrayList<String> GetUrls() {
- 		for (int i = 0; i < maxPgs; i++) {
+ 	public ArrayList<String> GetUrls(int pg,int to) {
+ 		for (int i = pg; i < pg+to; i++) {
  			counter=0;
  			ConnectToEachPage(i);
  			ExtractUrls();
- 			System.out.println("Extracted "+ counter +" urls from page "+ (i+1));
+ 			System.out.println("Number of urls extraced from page "+ (i+1)+": "+counter);
  		}
- 		this.urls = ManipulateUrls(); // path to each PV System Profile
+ 		ManipulateUrls(); // path to each PV System Profile
  		return urls;
  	}
 
@@ -110,7 +117,7 @@ import com.mongodb.MongoClientURI;
  				String link=el.select("td a[href]").get(0).attr("href").toString();
  				if(fullurls.contains(link)==false){
 	 				counter++;
-	 				country=el.select("td").get(2).text().toString();
+	 				country=el.select("td").get(2).text().toString().toUpperCase();
 	 				zipcode=el.select("td").get(3).text().toString();
 	 				city=el.select("td").get(4).text().toString();
 	 				power=el.select("td").get(5).text().toString();
@@ -121,16 +128,17 @@ import com.mongodb.MongoClientURI;
 					zipcodeList.add(zipcode);
 					systemList.add(system);
 	 				fullurls.add(link);
-	 				System.out.printf("%s \t %s \t %s \t %s \t %s \n",system,country,city,zipcode,power);
+	 				//System.out.printf("%s \t %s \t %s \t %s \t %s \n",system,country,city,zipcode,power);
  				}
  			}
- 		urls = fullurls;
+ 		this.urls = fullurls;
  	}
 	/**
 	 * 
+	 * @return 
 	 * @return all paths for each PV System(not fully url)
 	 */
- 	private ArrayList<String> ManipulateUrls() {
+ 	private void ManipulateUrls() {
 	// extracts the path for each PV System Profile
  		ArrayList<String> updatedUrls = new ArrayList<String>();
  		String substrings[] = null;
@@ -140,9 +148,11 @@ import com.mongodb.MongoClientURI;
  			if (urls.get(i).toString().contains("OpenPlant")) {
  				// splits the original url we have extracted at these characters
  				substrings = urls.get(i).split("[=&]");
+ 				// substring[2] corresponds to the one we want
+				updatedUrls.add(substrings[1]);
  			}
  		}
-		return updatedUrls;
+		this.urls= updatedUrls;
 }
 
 /**
@@ -185,19 +195,21 @@ public ArrayList<String> getCountryList(){
 		return systemList;
 		
 	}
-	public void SaveDirectory() {
+	public void SaveDirectory(ArrayList<String> urls) {
 		MongoClientURI uri = new MongoClientURI(Conn);
 		MongoClient mongoClient = new MongoClient(uri);
 		DB db = mongoClient.getDB("sunnyportal");
 		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
 		mongoLogger.setLevel(Level.SEVERE);
-		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
-		LocalDateTime now = LocalDateTime.now();
+		DateFormat formatter = new SimpleDateFormat("dd/MM/yy HH:mm");
+		Date date = new Date();
+		Long timestamp=date.getTime();
 		DBCollection collection = db.getCollection("DirectoryCollection");
 		// creating a document for the PV System
 		for(int i=0;i<urls.size();i++) {
-				DBObject prof = new BasicDBObject("_id", urls.get(i)).
-						 append("System", systemList.get(i))
+				DBObject prof = new BasicDBObject("_id", urls.get(i))
+						.append("Timestamp", timestamp)
+						.append("System", systemList.get(i))
 						.append("Country", countryList.get(i))
 						.append("City", cityList.get(i))
 						.append("ZipCode",zipcodeList.get(i))
@@ -208,16 +220,16 @@ public ArrayList<String> getCountryList(){
 					//if it exists
 					if (exists.equals(prof)){
 						//if it is the same
-						System.out.println(dtf.format(now)+": "+systemList.get(i)+" is up to date.");
+						System.out.println(formatter.format(date)+": "+systemList.get(i)+" is up to date.");
 					}else{
 						//needs to be updated
 						collection.update(exists,prof);
-						System.out.println(dtf.format(now)+": "+systemList.get(i)+ " updated.");
+						System.out.println(formatter.format(date)+": "+systemList.get(i)+ " updated.");
 					}
 				}else{
 					//if it doesnt exist, insert it
 					collection.insert(prof);
-					System.out.println(dtf.format(now)+": "+systemList.get(i)+" saved.");
+					System.out.println(formatter.format(date)+": "+systemList.get(i)+" saved.");
 				}
 		}
 	}

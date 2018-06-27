@@ -35,7 +35,7 @@ import com.mongodb.MongoClientURI;
 public class PVSystemCrawler {
 	private String Conn,Country;
 	private String url, plant;
-	private String id, SystemTitle, City,Zipcode, Operator, StartDate, Power,
+	private String id, SystemTitle,Operator, City,Zipcode, StartDate, Power,
 			AnProduction, CO2, Modules, Azimuth, Inclination, Communication,
 			Inverter, Sensors, imgLink, readingsUnit;
 	private String descinfo;
@@ -44,22 +44,17 @@ public class PVSystemCrawler {
 	/**
 	 * Constructor of each PV System
 	 * @param Conn		connection to the database
-	 * @param plant		path of each PVSystem
+	 * @param plants.		path of each PVSystem
 	 * @param power 	power of the System
 	 * @param loc		location of the System(City)
 	 * @param Country	country in which the System is install
 	*/
-	public PVSystemCrawler(String Conn, String plant,String SystemTitle, String power,String city,String Country,String zipcode){
+	public PVSystemCrawler(String Conn,DBObject plants){
 
 		this.Conn = Conn;
-		this.plant = plant;
-		this.SystemTitle = SystemTitle;
-		this.Power = power;
+		this.plant = plants.get("_id").toString();
 		this.url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?plant="
 				+ plant + "&splang=";
-		this.City=city;
-		this.Country=Country;
-		this.Zipcode=zipcode;
 	}
 	/**
 	 * this function gets the profile information
@@ -71,6 +66,7 @@ public class PVSystemCrawler {
 		
 		//connects to the url
 		Document doc = Jsoup.connect(url).timeout(100000).get();
+		SystemTitle= doc.select("#ctl00_ContentPlaceHolder1_title").get(0).text();
 		// extracting the location
 		elements = doc
 				.select("td[class=PlantProfileCellLabel BoxRoundCornerLineVLeft]");
@@ -320,9 +316,11 @@ public class PVSystemCrawler {
 		mongoLogger.setLevel(Level.SEVERE);
 		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
 		LocalDateTime now = LocalDateTime.now();
-		DBCollection collection = db.getCollection(Country+"PVSystemProfiles");
+		DBCollection collection = db.getCollection("PVSystemProfiles");
 		// creating a document for the PV System
-		DBObject prof = new BasicDBObject("_id", plant).append("System", SystemTitle)
+		DBObject prof = new BasicDBObject("_id", plant)
+				.append("System", SystemTitle)
+				.append("Operator", Operator)
 				.append("systemid", id)
 				.append("Country", Country)
 				.append("City", City)
