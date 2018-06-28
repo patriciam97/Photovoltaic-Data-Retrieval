@@ -25,10 +25,10 @@ import com.mongodb.MongoClientURI;
  * @author Patricia M.
  *
  */
- public class DirectoryCrawler1 {
- 	private static String url;
+ public class DirectoryCrawler1 implements Runnable {
+ 	private String url;
  	private String Conn;
- 	private static int maxPgs;
+ 	private int maxPgs,fromPg,toPg;
  	private ArrayList<String> urls= new ArrayList<String>();
  	private ArrayList<String> fullurls = new ArrayList<String>();
  	private ArrayList<String> powerList = new ArrayList<String>();
@@ -38,6 +38,7 @@ import com.mongodb.MongoClientURI;
 	private ArrayList<String> systemList = new ArrayList<String>();
  	private static int counter=0;
  	private static Document doc;
+ 	private String threadName;
 	/**
 	 * 
 	 * @param url base url of website
@@ -45,21 +46,22 @@ import com.mongodb.MongoClientURI;
 	 * @param Country country we are investigating
 	 * @throws IOException 
 	 */
- 	public DirectoryCrawler1(String Conn,String url,String maxPgs) throws IOException {
+ 	public DirectoryCrawler1(String url) {
  		this.url = url;
-// 		if(maxPgs.toLowerCase().equals("all")){
-// 			this.maxPgs=getMaximumPages(url);
-// 		}else{
-// 			this.maxPgs=Integer.parseInt(maxPgs);
-// 		}
- 		this.Conn=Conn;
  	}
+ 	public DirectoryCrawler1(String threadname,String Conn,String url,int maxPgs,int frompg) throws IOException {
+ 		this.url = url;
+ 		this.Conn=Conn;
+ 		this.toPg=maxPgs;
+ 		this.fromPg=frompg;
+ 		this.threadName=threadname;
 
-	/**
+ 	}
+ 	/**
 	 * 
 	 * @return pg maximum number of pages
 	 */
-	public static int getMaximumPages(String url) throws IOException {
+	public int getMaximumPages(String url) throws IOException {
 		
 		int pg = 0;
 		doc= Jsoup.connect(url).timeout(100000).get();
@@ -68,7 +70,6 @@ import com.mongodb.MongoClientURI;
 		// the last element is the total number of the pages
 		pg = Integer.parseInt(pages.last().text());
 		System.out.println("Total num of pages: "+pg);
-		maxPgs=pg;
 		return pg+1;
 	}
 
@@ -76,15 +77,14 @@ import com.mongodb.MongoClientURI;
 	 * 
 	 * @return urls of all systems from the Directory page
 	 */
- 	public ArrayList<String> GetUrls(int pg,int to) {
- 		for (int i = pg; i < pg+to; i++) {
+ 	public void GetUrls() {
+ 		for (int i = fromPg; i < toPg; i++) {
  			counter=0;
  			ConnectToEachPage(i);
  			ExtractUrls();
  			System.out.println("Number of urls extraced from page "+ (i+1)+": "+counter);
  		}
  		ManipulateUrls(); // path to each PV System Profile
- 		return urls;
  	}
 
 
@@ -92,7 +92,7 @@ import com.mongodb.MongoClientURI;
 	 * this function connects to a page
 	 * @param pg page number to crawl
 	 */
- 	private static void ConnectToEachPage(int pg) {
+ 	private void ConnectToEachPage(int pg) {
  		String link = url + "PageIndex=" + pg;
  		System.out.println("Crawling page: " + (pg+1));
  		try {
@@ -195,7 +195,7 @@ public ArrayList<String> getCountryList(){
 		return systemList;
 		
 	}
-	public void SaveDirectory(ArrayList<String> urls) {
+	public void SaveDirectory() {
 		MongoClientURI uri = new MongoClientURI(Conn);
 		MongoClient mongoClient = new MongoClient(uri);
 		DB db = mongoClient.getDB("sunnyportal");
@@ -233,4 +233,17 @@ public ArrayList<String> getCountryList(){
 				}
 		}
 	}
-}
+
+	public void run() {
+		//System.out.println(threadName+" from: "+fromPg+" to: "+toPg);
+		this.GetUrls();
+	  	this.SaveDirectory();
+	
+  		if(this.urls.size()>0){
+  			System.out.println("Total: "+ (this.urls.size()));
+  		}else{
+  			System.out.println("No Urls have been extracted.");
+  		}
+	}
+
+ }

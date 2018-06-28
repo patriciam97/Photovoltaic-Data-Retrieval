@@ -34,8 +34,9 @@ public class WebCrawler {
 	 * @param args
 	 * @throws IOException
 	 * @throws ParseException
+	 * @throws InterruptedException 
 	 */
-	public static void main(String[] args) throws IOException, ParseException {
+	public static void main(String[] args) throws IOException, ParseException, InterruptedException {
 		ArrayList<String> countrylist = null;
 		long startTime = System.nanoTime();
 		String configtxt="configurations.txt";
@@ -45,15 +46,15 @@ public class WebCrawler {
 			DisplayMenu();
 		}
 		//calculates the elapsed time
-//		long estimatedTime = (System.nanoTime() - startTime);
-//		estimatedTime=TimeUnit.SECONDS.convert(estimatedTime, TimeUnit.NANOSECONDS);
-//		long mins= estimatedTime / 60;
-//		long secs= estimatedTime % 60;
-//		System.out.format("Elapsed Time: %d minutes and %d seconds.",mins, secs);
+		long estimatedTime = (System.nanoTime() - startTime);
+		estimatedTime=TimeUnit.SECONDS.convert(estimatedTime, TimeUnit.NANOSECONDS);
+		long mins= estimatedTime / 60;
+		long secs= estimatedTime % 60;
+		System.out.format("Elapsed Time: %d minutes and %d seconds.",mins, secs);
 	}			
 
 
-	private static void DisplayMenu() throws IOException, ParseException {
+	private static void DisplayMenu() throws IOException, ParseException, InterruptedException {
 		Scanner in = new Scanner ( System.in );
 		System.out.println("***********************************************\n*                   SUNNY-BOT                 *\n*               by Patricia Milou             *\n*                                             *\n***********************************************");
 	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5) Exit" );
@@ -111,46 +112,50 @@ public class WebCrawler {
 	}
 
 
-	public static void runDirectoryCrawler(String maxPages) throws IOException{
+	public static void runDirectoryCrawler(String maxPages) throws IOException, InterruptedException{
 		int mxPgs;
 		boolean done=true;
-		DirectoryCrawler1 Dc= new DirectoryCrawler1(dbConn,url,maxPages);
+		int max = 0;
+		DirectoryCrawler1 Dc= new DirectoryCrawler1(url);
 		if (maxPages.toLowerCase().equals("all")){
 			mxPgs=Dc.getMaximumPages(url);
+			max=mxPgs;
 		}else{
 			mxPgs=Integer.parseInt(maxPages);
-		}
-		int threadssize=(mxPgs%5)+1;
-		ArrayList<Thread> threads=new ArrayList<Thread>(threadssize);
-		for (int i=0;i<mxPgs;i=i+5){
-            Thread object = new Thread(new myThread("Thread "+(i/5),dbConn,url,i+5,i));
-            threads.add(object);
-            object.start();
-		}
-		while(done=true){
-			done=true;
-			for(Thread t:threads){
-				if (t.isAlive()==false){
-					done=done&&true;
-				}else{
-					done=done&&false;
-				}
-			}
+			max=Dc.getMaximumPages(url);
 		}
 
-		
-//		DirectoryCrawler1 Dc= new DirectoryCrawler1(dbConn,url,maxPages);
-//  		urls=Dc.GetUrls(0,mxPgs);
-//  		ArrayList<String> systemList=Dc.getSystemList();
-//  		Dc.SaveDirectory(urls);
-//
-//  		if(urls.size()>0){
-//  			System.out.println("Total: "+ (urls.size()));
-//  		}else{
-//  			System.out.println("No Urls have been extracted.");
-//  		}
-  		//Directory Crawler ends here
+			if(mxPgs<=max){
+				int limit=5; //page limit
+				int threadssize=(mxPgs / limit);
+
+				ArrayList<Thread> threads=new ArrayList<Thread>();
+				int c=0; //pagecounter
+				if(mxPgs>=limit){
+					for (int i=0;i<threadssize;i++){
+						Thread object = new Thread(new DirectoryCrawler1("Thread "+i,dbConn,url,c+limit,c));
+			            threads.add(object);
+			            c=c+limit;
+					}
+				}
+				if (mxPgs>c){
+					System.out.println("Thread: "+threadssize+" FromPg: "+c+" To Page: "+mxPgs);
+					Thread object = new Thread(new Thread(new DirectoryCrawler1("Thread "+threadssize,dbConn,url,mxPgs,c)));
+		            threads.add(object);
+		        }
+				
+				for(Thread t:threads){
+					t.start();
+				}
+				
+				//return to the Main Menu only if all threads have died.
+					for(Thread t:threads){
+						t.join();
+					}
+			
+		}
 	}
+
 	public static List<DBObject> RetrievePVPlants(){
 		DBCursor results;
 		MongoClientURI uri = new MongoClientURI(dbConn);
