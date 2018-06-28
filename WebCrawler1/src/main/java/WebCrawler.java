@@ -38,10 +38,11 @@ public class WebCrawler {
 	 */
 	public static void main(String[] args) throws IOException, ParseException, InterruptedException {
 		ArrayList<String> countrylist = null;
-		long startTime = System.nanoTime();
+		long startTime = System.nanoTime(); //used in order to measure the running time
 		String configtxt="configurations.txt";
 		Database db= new Database(configtxt);
 		dbConn=db.getConnection();
+		//show the menu until the user selects the exit option
 		while(exit==false){
 			DisplayMenu();
 		}
@@ -53,13 +54,19 @@ public class WebCrawler {
 		System.out.format("Elapsed Time: %d minutes and %d seconds.",mins, secs);
 	}			
 
-
+	/**
+	 * 
+	 * @throws IOException
+	 * @throws ParseException
+	 * @throws InterruptedException
+	 */
 	private static void DisplayMenu() throws IOException, ParseException, InterruptedException {
 		Scanner in = new Scanner ( System.in );
 		System.out.println("***********************************************\n*                   SUNNY-BOT                 *\n*               by Patricia Milou             *\n*                                             *\n***********************************************");
 	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5) Exit" );
 	    System.out.print ( ">>Selection: " );
 	    int option=in.nextInt();
+	    
 	    if(option>0 && option<6){
 		    switch (option) {
 		      case 1:
@@ -92,7 +99,12 @@ public class WebCrawler {
 	    	System.out.println("Option not available.");
 	    }
 	}
-
+	/**
+	 * 
+	 * @param Country country specified by the user
+	 * @throws IOException
+	 * @throws ParseException
+	 */
 	private static void runPVSystemCrawler(String Country) throws IOException, ParseException {
 		PVSystemCrawler prof;
 		//PVSystems Crawler starts here
@@ -111,39 +123,48 @@ public class WebCrawler {
         		
 	}
 
-
+	/**
+	 * 
+	 * @param maxPages maximume pages the user selects
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	public static void runDirectoryCrawler(String maxPages) throws IOException, InterruptedException{
 		int mxPgs;
 		boolean done=true;
 		int max = 0;
+		//creates a new Directory Crawler in order to extract the number of maximum pages
 		DirectoryCrawler1 Dc= new DirectoryCrawler1(url);
+		
 		if (maxPages.toLowerCase().equals("all")){
-			mxPgs=Dc.getMaximumPages(url);
+			mxPgs=Dc.getMaximumPages();
 			max=mxPgs;
 		}else{
 			mxPgs=Integer.parseInt(maxPages);
-			max=Dc.getMaximumPages(url);
+			max=Dc.getMaximumPages();
 		}
 
-			if(mxPgs<=max){
+			if(mxPgs<=max){ //if within the boundaries
 				int limit=5; //page limit
 				int threadssize=(mxPgs / limit);
 
-				ArrayList<Thread> threads=new ArrayList<Thread>();
+				ArrayList<Thread> threads=new ArrayList<Thread>(); 
 				int c=0; //pagecounter
+				
 				if(mxPgs>=limit){
-					for (int i=0;i<threadssize;i++){
+					for (int i=0;i<threadssize;i++){ 
+						//creates a new thread responsible for pages c to c+limit
 						Thread object = new Thread(new DirectoryCrawler1("Thread "+i,dbConn,url,c+limit,c));
-			            threads.add(object);
+			            threads.add(object); //adds it into the Arraylist
 			            c=c+limit;
 					}
 				}
-				if (mxPgs>c){
+				if (mxPgs>c){ //used for any remainder pages
 					System.out.println("Thread: "+threadssize+" FromPg: "+c+" To Page: "+mxPgs);
 					Thread object = new Thread(new Thread(new DirectoryCrawler1("Thread "+threadssize,dbConn,url,mxPgs,c)));
 		            threads.add(object);
 		        }
-				
+				//start all threads
 				for(Thread t:threads){
 					t.start();
 				}

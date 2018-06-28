@@ -39,32 +39,42 @@ import com.mongodb.MongoClientURI;
  	private static int counter=0;
  	private static Document doc;
  	private String threadName;
-	/**
-	 * 
-	 * @param url base url of website
-	 * @param maxPgs maximum pages to crawl
-	 * @param Country country we are investigating
-	 * @throws IOException 
-	 */
+
+ 	/**
+ 	 * 
+ 	 * @param url the url of the website
+ 	 */
  	public DirectoryCrawler1(String url) {
  		this.url = url;
  	}
- 	public DirectoryCrawler1(String threadname,String Conn,String url,int maxPgs,int frompg) throws IOException {
+ 	/**
+ 	 * this constructor is used for multi-threading
+ 	 * @param threadname  	name of thread
+ 	 * @param Conn			database connection
+ 	 * @param url 			url of website
+ 	 * @param toPg			to page
+ 	 * @param frompg		from page
+ 	 * @throws IOException
+ 	 */
+ 	public DirectoryCrawler1(String threadname,String Conn,String url,int toPg,int frompg) throws IOException {
  		this.url = url;
  		this.Conn=Conn;
- 		this.toPg=maxPgs;
+ 		this.toPg=toPg;
  		this.fromPg=frompg;
  		this.threadName=threadname;
 
  	}
+
  	/**
-	 * 
-	 * @return pg maximum number of pages
-	 */
-	public int getMaximumPages(String url) throws IOException {
+ 	 * 
+ 	 * @return an integer of the maximum number of pages of the directory
+ 	 * @throws IOException
+ 	 */
+ 	
+	public int getMaximumPages() throws IOException {
 		
-		int pg = 0;
-		doc= Jsoup.connect(url).timeout(100000).get();
+		int pg = 0; //initialise variable to 0.
+		doc= Jsoup.connect(url).timeout(100000).get(); //connect to the website
 		Element table = doc.getElementById("ctl00_ContentPlaceHolder1__dataGridPagerDown_PagerTable");
 		Elements pages = table.select("tr td a");
 		// the last element is the total number of the pages
@@ -74,8 +84,7 @@ import com.mongodb.MongoClientURI;
 	}
 
 	/**
-	 * 
-	 * @return urls of all systems from the Directory page
+	 * extracts the full urls of all systems from page fromPg to page toPg
 	 */
  	public void GetUrls() {
  		for (int i = fromPg; i < toPg; i++) {
@@ -84,14 +93,13 @@ import com.mongodb.MongoClientURI;
  			ExtractUrls();
  			System.out.println("Number of urls extraced from page "+ (i+1)+": "+counter);
  		}
- 		ManipulateUrls(); // path to each PV System Profile
+ 		ManipulateUrls(); // extracts only the path to each PV System Profile
  	}
 
-
-	/**
-	 * this function connects to a page
-	 * @param pg page number to crawl
-	 */
+ 	/**
+ 	 * 
+ 	 * @param pg connects to that page
+ 	 */
  	private void ConnectToEachPage(int pg) {
  		String link = url + "PageIndex=" + pg;
  		System.out.println("Crawling page: " + (pg+1));
@@ -100,7 +108,6 @@ import com.mongodb.MongoClientURI;
 			//connects to the link
 			doc = Jsoup.connect(link).timeout(1000000).get();
  		} catch (IOException e) {
- 			// TODO Auto-generated catch block
  			e.printStackTrace();
  		}
  	}
@@ -134,9 +141,7 @@ import com.mongodb.MongoClientURI;
  		this.urls = fullurls;
  	}
 	/**
-	 * 
-	 * @return 
-	 * @return all paths for each PV System(not fully url)
+	 * extracts only the path from the full url.
 	 */
  	private void ManipulateUrls() {
 	// extracts the path for each PV System Profile
@@ -195,6 +200,9 @@ public ArrayList<String> getCountryList(){
 		return systemList;
 		
 	}
+	/**
+	 * this function saves the path,system name,country,city,zipcode and power of each system along with the timestamp of the current date and time.
+	 */
 	public void SaveDirectory() {
 		MongoClientURI uri = new MongoClientURI(Conn);
 		MongoClient mongoClient = new MongoClient(uri);
@@ -233,9 +241,10 @@ public ArrayList<String> getCountryList(){
 				}
 		}
 	}
-
+	/**
+	 * this method is used for multi-threading 
+	 */
 	public void run() {
-		//System.out.println(threadName+" from: "+fromPg+" to: "+toPg);
 		this.GetUrls();
 	  	this.SaveDirectory();
 	

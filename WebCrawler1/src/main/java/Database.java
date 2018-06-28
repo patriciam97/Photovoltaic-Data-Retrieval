@@ -17,13 +17,23 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
-
+/**
+ * 
+ * @author Patricia M
+ *
+ */
 public class Database {
 	public String host;
 	public String port;
 	public String username;
 	public String password;
 	public String database;
+	
+/**
+ * 
+ * @param configtxt textfile with the details
+ * @throws IOException
+ */
 	public Database(String configtxt) throws IOException{
 		ReadConfig(configtxt);
 	}
@@ -48,6 +58,10 @@ public class Database {
          }   
 		 br.close(); 
 	}
+	/**
+	 * 
+	 * @return the connection string
+	 */
 	public String getConnection(){
 		return "mongodb://"+username+":"+password+"@"+host+":"+port+"/"+database;
 	}
