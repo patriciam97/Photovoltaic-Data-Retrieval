@@ -3,6 +3,8 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,6 +31,9 @@ public class WebCrawler {
 	public static Document doc;
 	public static boolean exit=false;
 	public static ArrayList<String> urls=null;
+	public static final DCTaskManager DCtaskManager = new DCTaskManager(32);
+	public static final PVTaskManager PVtaskManager = new PVTaskManager(32);
+
 	/**
 	 * 
 	 * @param args
@@ -37,6 +42,7 @@ public class WebCrawler {
 	 * @throws InterruptedException 
 	 */
 	public static void main(String[] args) throws IOException, ParseException, InterruptedException {
+		
 		ArrayList<String> countrylist = null;
 		long startTime = System.nanoTime(); //used in order to measure the running time
 		String configtxt="configurations.txt";
@@ -104,77 +110,87 @@ public class WebCrawler {
 	 * @param Country country specified by the user
 	 * @throws IOException
 	 * @throws ParseException
+	 * @throws InterruptedException 
 	 */
-	private static void runPVSystemCrawler(String Country) throws IOException, ParseException {
+	private static void runPVSystemCrawler(String Country) throws IOException, ParseException, InterruptedException {
+		ArrayList<Thread> threads=new ArrayList<Thread>(); 
+		ArrayList<String> threadplants= new ArrayList<String>();
 		PVSystemCrawler prof;
 		//PVSystems Crawler starts here
   		List<DBObject> plants=RetrievePVPlants();
   		System.out.println("Only "+ plants.size()+" PV Systems are install in "+Country);
-  		for (int i=0;i<plants.size();i++){
-  				prof= new PVSystemCrawler(dbConn,plants.get(i));
-  				prof.getProfileInfo();
-  				String[] subpages = prof.getUrlOfSubpage();
-  				if (subpages[0] != "nosubpage") { //if subpage doesn't exist, then readings dont exist
-  					prof.getMonthlyReadings(urls.get(i), subpages);
-  				}
-  				prof.SaveInfo(); //saves or updates the system's information
+//  	 	for (int i=0;i<plants.size();i++){
+//  			 	String url = plants.get(i).get("_id").toString();
+//  				prof= new PVSystemCrawler(dbConn,plants.get(i));
+//  				prof.getProfileInfo();
+//  				String[] subpages = prof.getUrlOfSubpage();
+//  				if (subpages[0] != "nosubpage") { //if subpage doesn't exist, then readings dont exist
+//  					prof.getMonthlyReadings(url, subpages);
+//  				}
+//  				prof.SaveInfo(); //saves or updates the system's information
+//  		}
+  		//multithreading trial below
+  		if(plants.size()>0){
+	  		int limit=1; //page limit
+			int threadssize=plants.size();
+			int counter=0;
+			for (int i=0;i<threadssize;i++){ 
+				String plant= plants.get(i).get("_id").toString();
+				counter++;
+				PVtaskManager.submitJob((new CopyOfPVSystemCrawler("Thread "+i,dbConn,plant)));
+			}
+			while(PVtaskManager.howManyAreRunning()>0){
+				Thread.sleep(100);
+			}
   		}
-  		//PVSystems Crawler ends here
-        		
 	}
-
 	/**
 	 * 
-	 * @param maxPages maximume pages the user selects
+	 * @param maxPages maximum pages the user selects
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public static void runDirectoryCrawler(String maxPages) throws IOException, InterruptedException{
+	public static  void runDirectoryCrawler(String maxPages) throws IOException, InterruptedException{
 		int mxPgs;
 		boolean done=true;
 		int max = 0;
 		//creates a new Directory Crawler in order to extract the number of maximum pages
 		DirectoryCrawler1 Dc= new DirectoryCrawler1(url);
-		
+		//max=Dc.getMaximumPages();
+		max =1121;
 		if (maxPages.toLowerCase().equals("all")){
-			mxPgs=Dc.getMaximumPages();
-			max=mxPgs;
+			mxPgs=max;
 		}else{
 			mxPgs=Integer.parseInt(maxPages);
-			max=Dc.getMaximumPages();
 		}
 
-			if(mxPgs<=max){ //if within the boundaries
-				int limit=5; //page limit
-				int threadssize=(mxPgs / limit);
-
-				ArrayList<Thread> threads=new ArrayList<Thread>(); 
-				int c=0; //pagecounter
-				
-				if(mxPgs>=limit){
-					for (int i=0;i<threadssize;i++){ 
-						//creates a new thread responsible for pages c to c+limit
-						Thread object = new Thread(new DirectoryCrawler1("Thread "+i,dbConn,url,c+limit,c));
-			            threads.add(object); //adds it into the Arraylist
-			            c=c+limit;
-					}
-				}
-				if (mxPgs>c){ //used for any remainder pages
-					System.out.println("Thread: "+threadssize+" FromPg: "+c+" To Page: "+mxPgs);
-					Thread object = new Thread(new Thread(new DirectoryCrawler1("Thread "+threadssize,dbConn,url,mxPgs,c)));
-		            threads.add(object);
-		        }
-				//start all threads
-				for(Thread t:threads){
-					t.start();
-				}
-				
-				//return to the Main Menu only if all threads have died.
-					for(Thread t:threads){
-						t.join();
-					}
+		//if the user asks for more pages than the maximum pages
+		if(mxPgs>max){
+			return;
+		}
 			
+		//if within the boundaries
+		int limit=1; //page limit
+		int threadssize=(mxPgs / limit);
+
+		int c=0; //pagecounter
+		
+		if(mxPgs>=limit){
+			for (int i=0;i<threadssize;i++){ 
+				DCtaskManager.submitJob((new DirectoryCrawler1("Thread "+i,dbConn,url,c+limit,c)));
+				c=c+limit;
+				}
 		}
+		if (mxPgs>c){   //used for any remainder pages
+			System.out.println("Thread: "+threadssize+" FromPg: "+c+" To Page: "+mxPgs);
+			DCtaskManager.submitJob((new DirectoryCrawler1("Thread "+threadssize,dbConn,url,mxPgs,c)));
+        }
+		while(DCtaskManager.howManyAreRunning()>0){
+			Thread.sleep(1000);
+		}
+	
+		
+		
 	}
 
 	public static List<DBObject> RetrievePVPlants(){

@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,7 +26,7 @@ import com.mongodb.MongoClientURI;
  * @author Patricia M.
  *
  */
- public class DirectoryCrawler1 implements Runnable {
+ public class DirectoryCrawler1 implements Callable<DirectoryCrawler1> {
  	private String url;
  	private String Conn;
  	private int maxPgs,fromPg,toPg;
@@ -37,8 +38,11 @@ import com.mongodb.MongoClientURI;
 	private ArrayList<String> zipcodeList = new ArrayList<String>();
 	private ArrayList<String> systemList = new ArrayList<String>();
  	private static int counter=0;
+ 	private static int ids;
+ 	private int id;
  	private static Document doc;
  	private String threadName;
+ 	
 
  	/**
  	 * 
@@ -46,6 +50,7 @@ import com.mongodb.MongoClientURI;
  	 */
  	public DirectoryCrawler1(String url) {
  		this.url = url;
+ 		this.id = ids++;
  	}
  	/**
  	 * this constructor is used for multi-threading
@@ -62,6 +67,8 @@ import com.mongodb.MongoClientURI;
  		this.toPg=toPg;
  		this.fromPg=frompg;
  		this.threadName=threadname;
+ 		this.id = ids++;
+
 
  	}
 
@@ -91,7 +98,7 @@ import com.mongodb.MongoClientURI;
  			counter=0;
  			ConnectToEachPage(i);
  			ExtractUrls();
- 			System.out.println("Number of urls extraced from page "+ (i+1)+": "+counter);
+ 			System.out.println("["+id+"] "+"Number of urls extraced from page "+ (i+1)+": "+counter);
  		}
  		ManipulateUrls(); // extracts only the path to each PV System Profile
  	}
@@ -184,6 +191,9 @@ public ArrayList<String> getZipCodeList(){
 	return zipcodeList;
 	
 }
+public ArrayList<String> getUrls() {
+	return urls;
+}
 /**
  * 
  * @return the country list from the Directory page
@@ -228,31 +238,28 @@ public ArrayList<String> getCountryList(){
 					//if it exists
 					if (exists.equals(prof)){
 						//if it is the same
-						System.out.println(formatter.format(date)+": "+systemList.get(i)+" is up to date.");
+						System.out.println("["+id+"]"+formatter.format(date)+": "+systemList.get(i)+" is up to date.");
 					}else{
 						//needs to be updated
 						collection.update(exists,prof);
-						System.out.println(formatter.format(date)+": "+systemList.get(i)+ " updated.");
+						System.out.println("["+id+"]"+formatter.format(date)+": "+systemList.get(i)+ " updated.");
 					}
 				}else{
 					//if it doesnt exist, insert it
 					collection.insert(prof);
-					System.out.println(formatter.format(date)+": "+systemList.get(i)+" saved.");
+					System.out.println("["+id+"]"+formatter.format(date)+": "+systemList.get(i)+" saved.");
 				}
 		}
 	}
 	/**
 	 * this method is used for multi-threading 
 	 */
-	public void run() {
+	public DirectoryCrawler1 call() throws Exception {
+		System.out.println(id+ " running.");
 		this.GetUrls();
 	  	this.SaveDirectory();
-	
-  		if(this.urls.size()>0){
-  			System.out.println("Total: "+ (this.urls.size()));
-  		}else{
-  			System.out.println("No Urls have been extracted.");
-  		}
+	  	id--;
+		return this;
 	}
 
  }

@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,14 +33,15 @@ import com.mongodb.MongoClientURI;
  * @author Patricia M
  *
  */
-public class PVSystemCrawler  {
-	private String Conn,Country;
-	private String url, plant;
+public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
+	private String Conn,Country,threadName;
+	private String plant;
 	private String id, SystemTitle,Operator, City,Zipcode, StartDate, Power,
 			AnProduction, CO2, Modules, Azimuth, Inclination, Communication,
 			Inverter, Sensors, imgLink, readingsUnit;
 	private String descinfo;
 	private int StartingYear;
+	String[] subpages;
 	private List<BasicDBObject> monthlyReadings= new ArrayList<BasicDBObject>();
 	/**
 	 * Constructor of each PV System
@@ -49,21 +51,22 @@ public class PVSystemCrawler  {
 	 * @param loc		location of the System(City)
 	 * @param Country	country in which the System is install
 	*/
-	public PVSystemCrawler(String Conn,DBObject plants){
+	public CopyOfPVSystemCrawler(String threadName,String Conn,String plant){
 
 		this.Conn = Conn;
-		this.plant = plants.get("_id").toString();
-		this.url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?plant="
-				+ plant + "&splang=";
+		this.plant = plant;
+		this.threadName=threadName;
+
 	}
+
 	/**
 	 * this function gets the profile information
 	 * and saves them as the values of the global variables above.
 	 * @throws IOException
 	 */
-	public void getProfileInfo() throws IOException {
+	public void getProfileInfo(String plant) throws IOException {
 		Elements elements,elementsval; //used for the selected elements.
-		
+		String url=	"https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?plant="+ plant + "&splang=";
 		//connects to the url
 		Document doc = Jsoup.connect(url).timeout(100000).get();
 		SystemTitle= doc.select("#ctl00_ContentPlaceHolder1_title").get(0).text();
@@ -117,11 +120,11 @@ public class PVSystemCrawler  {
 	 * @return      all urls that exist or "nosubpage" if no subpage exist 
 	 * @throws IOException
 	 */
-	public String[] getUrlOfSubpage() throws IOException {
+	public void getUrlOfSubpage(String plant) throws IOException {
 
 		String[] returnval = null;
 		Elements elements; //used for the selected elements.
-		
+		String url=	"https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?plant="+ plant + "&splang=";
 		//connects to the url
 		Document doc = Jsoup.connect(url).timeout(100000).get();
 		//if subpages exist
@@ -151,7 +154,7 @@ public class PVSystemCrawler  {
 				returnval[0] = "nosubpage";
 			}
 		}
-		return (returnval);
+		subpages=returnval;
 	}
 	/**
 	 * 
@@ -166,7 +169,7 @@ public class PVSystemCrawler  {
 		Document doc;
 		
 		for (String page : subpages) {
-			url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?page="
+			String url = "https://www.sunnyportal.com/Templates/PublicPageOverview.aspx?page="
 					+ page + "&plant=" + plant + "&splang=en-US";
 			//connect to each subpage
 			doc = Jsoup.connect(url).get();
@@ -209,7 +212,7 @@ public class PVSystemCrawler  {
 		DateFormat format = new SimpleDateFormat("MMM yy");
 		Document doc;
 		
-		url = "https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="
+		String url = "https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="
 				+ id
 				+ "&endTime=12/31/"
 				+ currentYear
@@ -229,7 +232,7 @@ public class PVSystemCrawler  {
 						+ "&endTime=12/31/"
 						+ i
 						+ "%2011:59:59%20PM&splang=en-US&plantTimezoneBias=180&name=";
-				doc = Jsoup.connect(url).get();
+				doc = Jsoup.connect(url).timeout(100000).get();
 				elements = doc
 						.select("div.tabelle table tr[class^=base-grid-item]");
 				if (elements.size() > 0) {
@@ -276,7 +279,7 @@ public class PVSystemCrawler  {
                 //last day of month
                 int day=now.getActualMaximum(Calendar.DAY_OF_MONTH);
                 String date=currentMonth+"/"+day+"/"+year;
-                url="https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="+id+"&endTime="+date+"%2011:59:59%20PM&splang=en-US&plantTimezoneBias=180&name=";
+                String url="https://www.sunnyportal.com/Templates/PublicChartValues.aspx?ID="+id+"&endTime="+date+"%2011:59:59%20PM&splang=en-US&plantTimezoneBias=180&name=";
                 //connect to the page with the daily readings for each month
                 doc=Jsoup.connect(url).get();
                 elements = doc
@@ -354,5 +357,61 @@ public class PVSystemCrawler  {
 			System.out.println(dtf.format(now)+": "+SystemTitle+" saved.");
 		}
 
+	}
+	public void ClearDetails(){
+		SystemTitle=null;
+		Operator=null;
+		id=null;
+		Zipcode=null;
+		City=null;
+		StartDate=null;
+		Power=null;
+		AnProduction=null;
+		CO2=null;
+		Modules=null;
+		Azimuth=null;
+		Inclination=null;
+		Communication=null;
+		Inverter=null;
+		Sensors=null;
+		imgLink=null;
+		readingsUnit=null;
+		descinfo=null;
+		StartingYear=0;
+		monthlyReadings=new ArrayList<BasicDBObject>();
+		String[] subpages = null;
+	}
+	
+
+	public CopyOfPVSystemCrawler call() throws Exception {
+		System.out.println("Creating thread: "+threadName);
+			try {
+				getProfileInfo(plant);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			try {
+				getUrlOfSubpage(plant);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			if (subpages[0] != "nosubpage") { //if subpage doesn't exist, then readings dont exist
+				try {
+					getMonthlyReadings(plant, subpages);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ParseException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			SaveInfo(); //saves or updates the system's information
+			
+	 	System.out.println(threadName+" has finished.");
+		
+		return this;
 	}
 }
