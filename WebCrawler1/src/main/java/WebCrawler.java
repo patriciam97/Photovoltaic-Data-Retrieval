@@ -1,9 +1,12 @@
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.bson.json.JsonParseException;
+import org.json.simple.JSONObject;
 import org.jsoup.nodes.Document;
 
 import com.mongodb.BasicDBObject;
@@ -74,7 +79,7 @@ public class WebCrawler {
 	private static void DisplayMenu() throws IOException, ParseException, InterruptedException {
 		Scanner in = new Scanner ( System.in );
 		System.out.println("***********************************************\n*                   SUNNY-BOT                 *\n*               by Patricia Milou             *\n*                                             *\n***********************************************");
-	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n6)Coordinates \n5) Exit" );
+	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5)Coordinates \n6) Exit" );
 	    System.out.print ( ">>Selection: " );
 	    int option=in.nextInt();
 	    
@@ -221,40 +226,44 @@ public class WebCrawler {
 		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
 		mongoLogger.setLevel(Level.SEVERE);
 		DBCollection collection = db.getCollection("DirectoryCollection");
-		BasicDBObject query = new BasicDBObject().append("Country", Country.toUpperCase()); // WHERE country= Country selected
-		BasicDBObject fields = new BasicDBObject();
+		BasicDBObject fields = new BasicDBObject().append("Country", "CYPRUS"); // WHERE country= Country selected
+		BasicDBObject query = new BasicDBObject();
 		 fields.put("_id", 0);
 		 fields.put("Country", 0);
 		 fields.put("City", 0);
 		 fields.put("ZipCode", 0);
-		results= collection.find(new BasicDBObject(),fields).sort(new BasicDBObject("_id", 1));
+		results= collection.find(new BasicDBObject(),fields);
 		List<DBObject> locations= results.toArray();
 		for(DBObject l:locations){
 			//get coordinates
+			System.out.println(l.toString());
 			String id= l.get("_id").toString();
 			String Countr= l.get("Country").toString();
 			String City= l.get("City").toString();
 			String ZipCode= l.get("ZipCode").toString();
 			String FullAddress= City+" "+Countr+" "+ ZipCode;
 			String link="http://dev.virtualearth.net/REST/v1/Locations?countryRegion="+Countr+"&adminDistrict="+City+"&postalCode="+(String)ZipCode;
-			 BufferedReader reader = null;
-			    try {
-			        URL url = new URL(link);
-			        reader = new BufferedReader(new InputStreamReader(url.openStream()));
-			        StringBuffer buffer = new StringBuffer();
-			        int read;
-			        char[] chars = new char[1024];
-			        while ((read = reader.read(chars)) != -1)
-			            buffer.append(chars, 0, read); 
-
-			        String response=buffer.toString();
-			        System.out.println(response);
-			    } finally {
-			        if (reader != null)
-			            reader.close();
-			    }
-			
+			JSONObject json = readJsonFromUrl(link);
+			System.out.println(json.toJSONString());
 		}
 	}
-	
+	public static JSONObject readJsonFromUrl(String url) throws IOException, JsonParseException {
+	    InputStream is = new URL(url).openStream();
+	    try {
+	      BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+	      String jsonText = readAll(rd);
+	      JSONObject json = new JSONObject();
+	      return json;
+	    } finally {
+	      is.close();
+	    }
+	  }
+	  private static String readAll(Reader rd) throws IOException {
+		    StringBuilder sb = new StringBuilder();
+		    int cp;
+		    while ((cp = rd.read()) != -1) {
+		      sb.append((char) cp);
+		    }
+		    return sb.toString();
+		  }
 }
