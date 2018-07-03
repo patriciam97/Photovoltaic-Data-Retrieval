@@ -384,7 +384,6 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 	
 
 	public CopyOfPVSystemCrawler call() throws Exception {
-		System.out.println("Creating thread: "+threadName);
 			try {
 				getProfileInfo(plant);
 			} catch (IOException e) {
@@ -409,9 +408,7 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 				}
 			}
 			SaveInfo(); //saves or updates the system's information
-			
-	 	System.out.println(threadName+" has finished.");
-		
+				
 		return this;
 	}
 }

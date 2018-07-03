@@ -1,4 +1,9 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,9 +36,9 @@ public class WebCrawler {
 	public static Document doc;
 	public static boolean exit=false;
 	public static ArrayList<String> urls=null;
-	public static final DCTaskManager DCtaskManager = new DCTaskManager(32);
-	public static final PVTaskManager PVtaskManager = new PVTaskManager(32);
-
+	public static final DCTaskManager DCtaskManager = new DCTaskManager(16);
+	public static final PVTaskManager PVtaskManager = new PVTaskManager(16);
+	
 	/**
 	 * 
 	 * @param args
@@ -69,11 +74,11 @@ public class WebCrawler {
 	private static void DisplayMenu() throws IOException, ParseException, InterruptedException {
 		Scanner in = new Scanner ( System.in );
 		System.out.println("***********************************************\n*                   SUNNY-BOT                 *\n*               by Patricia Milou             *\n*                                             *\n***********************************************");
-	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5) Exit" );
+	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n6)Coordinates \n5) Exit" );
 	    System.out.print ( ">>Selection: " );
 	    int option=in.nextInt();
 	    
-	    if(option>0 && option<6){
+	    if(option>0 && option<7){
 		    switch (option) {
 		      case 1:
 		    	//Directory Crawler starts here
@@ -98,6 +103,8 @@ public class WebCrawler {
 		    	  runPVSystemCrawler(Country);
 		    	  break;
 		      case 5:
+		    	  getCoordinates();
+		      case 6:
 		    	  exit=true;
 		    	  break;
 		    }
@@ -119,16 +126,6 @@ public class WebCrawler {
 		//PVSystems Crawler starts here
   		List<DBObject> plants=RetrievePVPlants();
   		System.out.println("Only "+ plants.size()+" PV Systems are install in "+Country);
-//  	 	for (int i=0;i<plants.size();i++){
-//  			 	String url = plants.get(i).get("_id").toString();
-//  				prof= new PVSystemCrawler(dbConn,plants.get(i));
-//  				prof.getProfileInfo();
-//  				String[] subpages = prof.getUrlOfSubpage();
-//  				if (subpages[0] != "nosubpage") { //if subpage doesn't exist, then readings dont exist
-//  					prof.getMonthlyReadings(url, subpages);
-//  				}
-//  				prof.SaveInfo(); //saves or updates the system's information
-//  		}
   		//multithreading trial below
   		if(plants.size()>0){
 	  		int limit=1; //page limit
@@ -143,6 +140,8 @@ public class WebCrawler {
 				Thread.sleep(100);
 			}
   		}
+  		
+  	
 	}
 	/**
 	 * 
@@ -156,8 +155,7 @@ public class WebCrawler {
 		int max = 0;
 		//creates a new Directory Crawler in order to extract the number of maximum pages
 		DirectoryCrawler1 Dc= new DirectoryCrawler1(url);
-		//max=Dc.getMaximumPages();
-		max =1121;
+		max=Dc.getMaximumPages();
 		if (maxPages.toLowerCase().equals("all")){
 			mxPgs=max;
 		}else{
@@ -214,6 +212,49 @@ public class WebCrawler {
 		
 	}
 	
+	public static void getCoordinates() throws IOException{
+		//get coordinates
+  		DBCursor results;
+		MongoClientURI uri = new MongoClientURI(dbConn);
+		MongoClient mongoClient = new MongoClient(uri);
+		DB db = mongoClient.getDB("sunnyportal");
+		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
+		mongoLogger.setLevel(Level.SEVERE);
+		DBCollection collection = db.getCollection("DirectoryCollection");
+		BasicDBObject query = new BasicDBObject().append("Country", Country.toUpperCase()); // WHERE country= Country selected
+		BasicDBObject fields = new BasicDBObject();
+		 fields.put("_id", 0);
+		 fields.put("Country", 0);
+		 fields.put("City", 0);
+		 fields.put("ZipCode", 0);
+		results= collection.find(new BasicDBObject(),fields).sort(new BasicDBObject("_id", 1));
+		List<DBObject> locations= results.toArray();
+		for(DBObject l:locations){
+			//get coordinates
+			String id= l.get("_id").toString();
+			String Countr= l.get("Country").toString();
+			String City= l.get("City").toString();
+			String ZipCode= l.get("ZipCode").toString();
+			String FullAddress= City+" "+Countr+" "+ ZipCode;
+			String link="http://dev.virtualearth.net/REST/v1/Locations?countryRegion="+Countr+"&adminDistrict="+City+"&postalCode="+(String)ZipCode;
+			 BufferedReader reader = null;
+			    try {
+			        URL url = new URL(link);
+			        reader = new BufferedReader(new InputStreamReader(url.openStream()));
+			        StringBuffer buffer = new StringBuffer();
+			        int read;
+			        char[] chars = new char[1024];
+			        while ((read = reader.read(chars)) != -1)
+			            buffer.append(chars, 0, read); 
 
-
+			        String response=buffer.toString();
+			        System.out.println(response);
+			    } finally {
+			        if (reader != null)
+			            reader.close();
+			    }
+			
+		}
+	}
+	
 }

@@ -65,7 +65,7 @@ public class PVSystemCrawler  {
 		Elements elements,elementsval; //used for the selected elements.
 		
 		//connects to the url
-		Document doc = Jsoup.connect(url).timeout(100000).get();
+		Document doc = Jsoup.connect(url).timeout(20000000).get();
 		SystemTitle= doc.select("#ctl00_ContentPlaceHolder1_title").get(0).text();
 		// extracting the location
 		elements = doc
@@ -123,7 +123,7 @@ public class PVSystemCrawler  {
 		Elements elements; //used for the selected elements.
 		
 		//connects to the url
-		Document doc = Jsoup.connect(url).timeout(100000).get();
+		Document doc = Jsoup.connect(url).timeout(20000000).get();
 		//if subpages exist
 		if (doc.select(
 				"#ctl00_ContentPlaceHolder1_PublicPagePlaceholder_PageUserControl_ctl00_UserControl1_OpenButtonsDivImg")

@@ -25,12 +25,11 @@ public class PVTaskManager implements Runnable {
 		return count;
 	}
 	public void run() {
-	//	while(true){
+		while(true){
 			
 			try {
 				CopyOfPVSystemCrawler result  = completionService.take().get();
 				count--;
-				System.out.println(howManyAreRunning());
 			} catch (InterruptedException e) {
 				count--;
 				e.printStackTrace();
@@ -38,7 +37,7 @@ public class PVTaskManager implements Runnable {
 				count--;
 				e.printStackTrace();
 			}
-//		}
+		}
 		
 	}
 

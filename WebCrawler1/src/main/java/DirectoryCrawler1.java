@@ -81,7 +81,7 @@ import com.mongodb.MongoClientURI;
 	public int getMaximumPages() throws IOException {
 		
 		int pg = 0; //initialise variable to 0.
-		doc= Jsoup.connect(url).timeout(100000).get(); //connect to the website
+		doc= Jsoup.connect(url).timeout(20000000).get(); //connect to the website
 		Element table = doc.getElementById("ctl00_ContentPlaceHolder1__dataGridPagerDown_PagerTable");
 		Elements pages = table.select("tr td a");
 		// the last element is the total number of the pages
@@ -111,9 +111,8 @@ import com.mongodb.MongoClientURI;
  		String link = url + "PageIndex=" + pg;
  		System.out.println("Crawling page: " + (pg+1));
  		try {
-			doc = Jsoup.connect(link).timeout(100000).get();
-			//connects to the link
-			doc = Jsoup.connect(link).timeout(1000000).get();
+				//connects to the link
+			doc = Jsoup.connect(link).timeout(20000000).get();
  		} catch (IOException e) {
  			e.printStackTrace();
  		}
@@ -255,7 +254,6 @@ public ArrayList<String> getCountryList(){
 	 * this method is used for multi-threading 
 	 */
 	public DirectoryCrawler1 call() throws Exception {
-		System.out.println(id+ " running.");
 		this.GetUrls();
 	  	this.SaveDirectory();
 	  	id--;
