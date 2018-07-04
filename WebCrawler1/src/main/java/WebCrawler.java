@@ -1,3 +1,9 @@
+import io.restassured.RestAssured;
+import io.restassured.builder.ResponseBuilder;
+import io.restassured.path.xml.element.NodeChildren;
+import io.restassured.response.Response;
+import io.restassured.response.ValidatableResponse;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,8 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.bson.json.JsonParseException;
-import org.json.simple.JSONObject;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import com.mongodb.BasicDBObject;
@@ -220,50 +225,52 @@ public class WebCrawler {
 	public static void getCoordinates() throws IOException{
 		//get coordinates
   		DBCursor results;
+  		BasicDBObject query ;
+  		DBCollection collection;
 		MongoClientURI uri = new MongoClientURI(dbConn);
 		MongoClient mongoClient = new MongoClient(uri);
 		DB db = mongoClient.getDB("sunnyportal");
 		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
 		mongoLogger.setLevel(Level.SEVERE);
-		DBCollection collection = db.getCollection("DirectoryCollection");
-		BasicDBObject fields = new BasicDBObject().append("Country", "CYPRUS"); // WHERE country= Country selected
-		BasicDBObject query = new BasicDBObject();
-		 fields.put("_id", 0);
-		 fields.put("Country", 0);
-		 fields.put("City", 0);
-		 fields.put("ZipCode", 0);
-		results= collection.find(new BasicDBObject(),fields);
+		collection = db.getCollection("DirectoryCollection");
+		query = new BasicDBObject().append("Country", "CYPRUS"); // WHERE country= Country selected
+		BasicDBObject project = new BasicDBObject();
+		project.put("_id", "");
+		project.put("City","");
+		project.put("Country","");
+		results= collection.find(query,project);
 		List<DBObject> locations= results.toArray();
 		for(DBObject l:locations){
-			//get coordinates
-			System.out.println(l.toString());
+//			get coordinates
 			String id= l.get("_id").toString();
-			String Countr= l.get("Country").toString();
 			String City= l.get("City").toString();
-			String ZipCode= l.get("ZipCode").toString();
-			String FullAddress= City+" "+Countr+" "+ ZipCode;
-			String link="http://dev.virtualearth.net/REST/v1/Locations?countryRegion="+Countr+"&adminDistrict="+City+"&postalCode="+(String)ZipCode;
-			JSONObject json = readJsonFromUrl(link);
-			System.out.println(json.toJSONString());
+			City.replace(" ","+");
+			String Countr= l.get("Country").toString();
+			String link="http://api.geonames.org/search?q="+City+"+"+Countr+"&username=patriciam97";
+			if(Jsoup.connect(link).get().selectFirst("totalResultsCount").text().equals("0")){
+				collection=db.getCollection("CorrectionsCollection");
+				DBObject prof = new BasicDBObject("_id",City);
+				DBObject exists=collection.findOne(City);
+				if (exists==null){ 
+					collection.insert(prof);
+					System.out.println("Needs correction");
+				}
+
+			}else{
+			String lat=Jsoup.connect(link).get().selectFirst("geonames geoname lat").text();
+			String lng=Jsoup.connect(link).get().selectFirst("geonames geoname lng").text();
+			query = new BasicDBObject().append("_id", id);
+			ArrayList<String> coordinates= new ArrayList<String>();
+			coordinates.add(lat);
+			coordinates.add(lng);
+			collection = db.getCollection("PVSystemProfiles");
+			DBObject prof= collection.findOne(id);
+			prof.put("Coordinates", coordinates);
+			collection.update(query,prof);
+			}
+			
 		}
+
 	}
-	public static JSONObject readJsonFromUrl(String url) throws IOException, JsonParseException {
-	    InputStream is = new URL(url).openStream();
-	    try {
-	      BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-	      String jsonText = readAll(rd);
-	      JSONObject json = new JSONObject();
-	      return json;
-	    } finally {
-	      is.close();
-	    }
-	  }
-	  private static String readAll(Reader rd) throws IOException {
-		    StringBuilder sb = new StringBuilder();
-		    int cp;
-		    while ((cp = rd.read()) != -1) {
-		      sb.append((char) cp);
-		    }
-		    return sb.toString();
-		  }
+
 }
