@@ -15,7 +15,9 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,6 +48,7 @@ public class WebCrawler {
 	public static Document doc;
 	public static boolean exit=false;
 	public static ArrayList<String> urls=null;
+	public static HashMap<String,String> corrections=new HashMap<String,String>();
 	public static final DCTaskManager DCtaskManager = new DCTaskManager(16);
 	public static final PVTaskManager PVtaskManager = new PVTaskManager(16);
 	
@@ -63,6 +66,8 @@ public class WebCrawler {
 		String configtxt="configurations.txt";
 		Database db= new Database(configtxt);
 		dbConn=db.getConnection();
+		//get all corrections from the database
+		getCorrections();
 		//show the menu until the user selects the exit option
 		while(exit==false){
 			DisplayMenu();
@@ -75,6 +80,27 @@ public class WebCrawler {
 		System.out.format("Elapsed Time: %d minutes and %d seconds.",mins, secs);
 	}			
 
+	private static void getCorrections() {
+		MongoClientURI uri = new MongoClientURI(dbConn);
+		MongoClient mongoClient = new MongoClient(uri);
+		DB db = mongoClient.getDB("sunnyportal");
+		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
+		mongoLogger.setLevel(Level.SEVERE);
+		DBCollection collection = db.getCollection("CorrectionsCollection");
+		BasicDBObject query = new BasicDBObject();
+		DBCursor results= collection.find(query);
+		List<DBObject> locations= results.toArray();
+		for (DBObject l : locations){
+			if (l.containsField("Correction")){
+				String id= l.get("_id").toString();
+				String city= l.get("Correction").toString();
+				corrections.put(id,city);
+				
+			}
+		}
+		
+	}
+
 	/**
 	 * 
 	 * @throws IOException
@@ -84,11 +110,11 @@ public class WebCrawler {
 	private static void DisplayMenu() throws IOException, ParseException, InterruptedException {
 		Scanner in = new Scanner ( System.in );
 		System.out.println("***********************************************\n*                   SUNNY-BOT                 *\n*               by Patricia Milou             *\n*                                             *\n***********************************************");
-	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5)Coordinates \n6) Exit" );
+	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5)Coordinates \n6)Edit the Corrections Collection \n7) Exit" );
 	    System.out.print ( ">>Selection: " );
 	    int option=in.nextInt();
 	    
-	    if(option>0 && option<7){
+	    if(option>0 && option<8){
 		    switch (option) {
 		      case 1:
 		    	//Directory Crawler starts here
@@ -113,8 +139,11 @@ public class WebCrawler {
 		    	  runPVSystemCrawler(Country);
 		    	  break;
 		      case 5:
-		    	  getCoordinates();
+		    	  break;
 		      case 6:
+		    	  ApplyCorrections();
+		    	  break;
+		      case 7:
 		    	  exit=true;
 		    	  break;
 		    }
@@ -122,6 +151,57 @@ public class WebCrawler {
 	    	System.out.println("Option not available.");
 	    }
 	}
+	private static void ApplyCorrections() throws IOException {
+		Scanner in;
+		String correction,city;
+		List<DBObject> locations;
+		DBCollection collection,collection2;
+		DBCursor results;
+		
+		MongoClientURI uri = new MongoClientURI(dbConn);
+		MongoClient mongoClient = new MongoClient(uri);
+		DB db = mongoClient.getDB("sunnyportal");
+		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
+		mongoLogger.setLevel(Level.SEVERE);
+		collection = db.getCollection("CorrectionsCollection");
+		BasicDBObject query = new BasicDBObject();
+		results= collection.find(query);
+		locations= results.toArray();
+			for (DBObject l:locations){
+				if(l.containsField("Correction")==false){
+					String plant= l.get("plant").toString();
+					city=l.get("_id").toString();
+					System.out.println("Enter a correction for "+city+":");
+					in = new Scanner ( System.in );
+					correction= in.nextLine();
+					DBObject prof = new BasicDBObject("_id",city).append("Correction",correction).append("Plant",plant);
+					collection.update(l,prof);
+					System.out.println("Correction added.");
+				}
+			}
+			System.out.println("Corrections are up to date.");
+			results= collection.find(query);
+			locations= results.toArray();
+			for (DBObject l:locations){
+				String plant= l.get("Plant").toString();
+				String City= l.get("Correction").toString();
+				collection = db.getCollection("ALLPVS");
+				System.out.println(plant);
+				DBObject prof=collection.findOne(plant);
+				String link="http://api.geonames.org/search?q="+City+"&username=patriciam97";
+				String lat=Jsoup.connect(link).timeout(20000).get().selectFirst("geonames geoname lat").text();
+				String lng=Jsoup.connect(link).timeout(20000).get().selectFirst("geonames geoname lng").text();
+				ArrayList<String> coordinates= new ArrayList<String>();
+				coordinates.add(lat);
+				coordinates.add(lng);
+				DBObject updated=prof;
+				updated.put("Coordinates",coordinates);
+				collection.update(prof,updated);
+				System.out.println((prof.get("System").toString())+" updated.");
+			}
+
+	}
+
 	/**
 	 * 
 	 * @param Country country specified by the user
@@ -221,56 +301,6 @@ public class WebCrawler {
 		return results.toArray();
 		
 	}
-	
-	public static void getCoordinates() throws IOException{
-		//get coordinates
-  		DBCursor results;
-  		BasicDBObject query ;
-  		DBCollection collection;
-		MongoClientURI uri = new MongoClientURI(dbConn);
-		MongoClient mongoClient = new MongoClient(uri);
-		DB db = mongoClient.getDB("sunnyportal");
-		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
-		mongoLogger.setLevel(Level.SEVERE);
-		collection = db.getCollection("DirectoryCollection");
-		query = new BasicDBObject().append("Country", "CYPRUS"); // WHERE country= Country selected
-		BasicDBObject project = new BasicDBObject();
-		project.put("_id", "");
-		project.put("City","");
-		project.put("Country","");
-		results= collection.find(query,project);
-		List<DBObject> locations= results.toArray();
-		for(DBObject l:locations){
-//			get coordinates
-			String id= l.get("_id").toString();
-			String City= l.get("City").toString();
-			City.replace(" ","+");
-			String Countr= l.get("Country").toString();
-			String link="http://api.geonames.org/search?q="+City+"+"+Countr+"&username=patriciam97";
-			if(Jsoup.connect(link).get().selectFirst("totalResultsCount").text().equals("0")){
-				collection=db.getCollection("CorrectionsCollection");
-				DBObject prof = new BasicDBObject("_id",City);
-				DBObject exists=collection.findOne(City);
-				if (exists==null){ 
-					collection.insert(prof);
-					System.out.println("Needs correction");
-				}
 
-			}else{
-			String lat=Jsoup.connect(link).get().selectFirst("geonames geoname lat").text();
-			String lng=Jsoup.connect(link).get().selectFirst("geonames geoname lng").text();
-			query = new BasicDBObject().append("_id", id);
-			ArrayList<String> coordinates= new ArrayList<String>();
-			coordinates.add(lat);
-			coordinates.add(lng);
-			collection = db.getCollection("PVSystemProfiles");
-			DBObject prof= collection.findOne(id);
-			prof.put("Coordinates", coordinates);
-			collection.update(query,prof);
-			}
-			
-		}
-
-	}
 
 }

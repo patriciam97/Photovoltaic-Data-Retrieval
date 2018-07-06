@@ -25,6 +25,7 @@ import org.jsoup.select.Elements;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -41,8 +42,9 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 			Inverter, Sensors, imgLink, readingsUnit;
 	private String descinfo;
 	private int StartingYear;
-	String[] subpages;
+	private String[] subpages;
 	private List<BasicDBObject> monthlyReadings= new ArrayList<BasicDBObject>();
+	private ArrayList<String> coordinates;
 	/**
 	 * Constructor of each PV System
 	 * @param Conn		connection to the database
@@ -319,7 +321,7 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 		mongoLogger.setLevel(Level.SEVERE);
 		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
 		LocalDateTime now = LocalDateTime.now();
-		DBCollection collection = db.getCollection("PVSystemProfiles");
+		DBCollection collection = db.getCollection("ALLPVS");
 		// creating a document for the PV System
 		DBObject prof = new BasicDBObject("_id", plant)
 				.append("System", SystemTitle)
@@ -338,7 +340,8 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 				.append("Sensors", Sensors).append("Image", imgLink)
 				.append("descinfo", descinfo)
 				.append("readingsUnit", readingsUnit)
-				.append("monthlyReadings", monthlyReadings);
+				.append("monthlyReadings", monthlyReadings)
+				.append("Coordinates",coordinates);
 		//check if this document already exists
 		DBObject exists=collection.findOne(plant);
 		if (exists!=null){ 
@@ -382,7 +385,71 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 		String[] subpages = null;
 	}
 	
+	public void getCoordinates() throws IOException{
+		System.out.println("Extracting the coordinates.");
+		//get coordinates
+  		DBCursor results;
+  		BasicDBObject query ;
+  		DBCollection collection;
+  		String link;
+  		
+		MongoClientURI uri = new MongoClientURI(Conn);
+		MongoClient mongoClient = new MongoClient(uri);
+		DB db = mongoClient.getDB("sunnyportal");
+		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
+		mongoLogger.setLevel(Level.SEVERE);
+		collection = db.getCollection("DirectoryCollection");
+		query = new BasicDBObject().append("_id",plant); // WHERE _id= plant selected
+		BasicDBObject project = new BasicDBObject();    //SELECT id,city and country
+		project.put("_id", "");
+		project.put("City","");
+		results= collection.find(query,project);
+		List<DBObject> locations= results.toArray();
+		for(DBObject l:locations){
+			//get id,city for each one
+			String id= l.get("_id").toString();
+			String City= l.get("City").toString();
+			City.replace(" ","+");  //change spance to '+'
+			link="http://api.geonames.org/search?q="+City+"+"+Country+"&username=patriciam97";
+			if(Jsoup.connect(link).get().selectFirst("totalResultsCount").text().equals("0")){
+				//if location not found on the geonames database
+				//check in HashMap of corrections
+				if(WebCrawler.corrections.containsKey(City)){
+					City= WebCrawler.corrections.get(City);
+					updateCoordinates(db,id,City);
+				}else{
+					collection=db.getCollection("CorrectionsCollection");
+					DBObject exists=collection.findOne(City);
+					if (exists==null){  //if it doesnt exist
+						DBObject prof= new BasicDBObject("_id",City).append("plant",id) ;
+						collection.insert(prof); //add it in the corrections collection
+						System.out.println("Needs correction");
+					}else{
+						System.out.println("Needs correction");
+					}
+				}
+				
+			}else{
+				updateCoordinates(db,id,City);
+				System.out.println("Coordinates extracted.");
+			}
+					}
 
+	}
+	
+	public void updateCoordinates(DB db,String id,String City) throws IOException{
+  		BasicDBObject query ;
+  		DBCollection collection;
+		String link="http://api.geonames.org/search?q="+City+"+"+Country+"&username=patriciam97";
+		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
+		mongoLogger.setLevel(Level.SEVERE);
+		String lat=Jsoup.connect(link).timeout(20000).get().selectFirst("geonames geoname lat").text();
+		String lng=Jsoup.connect(link).timeout(20000).get().selectFirst("geonames geoname lng").text();
+		query = new BasicDBObject().append("_id", id);
+		coordinates= new ArrayList<String>();
+		coordinates.add(lat);
+		coordinates.add(lng);
+	}
 	public CopyOfPVSystemCrawler call() throws Exception {
 			try {
 				getProfileInfo(plant);
@@ -407,6 +474,7 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 					e.printStackTrace();
 				}
 			}
+			getCoordinates();
 			SaveInfo(); //saves or updates the system's information
 				
 		return this;
