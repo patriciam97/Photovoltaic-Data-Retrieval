@@ -49,8 +49,8 @@ public class WebCrawler {
 	public static boolean exit=false;
 	public static ArrayList<String> urls=null;
 	public static HashMap<String,String> corrections=new HashMap<String,String>();
-	public static final DCTaskManager DCtaskManager = new DCTaskManager(16);
-	public static final PVTaskManager PVtaskManager = new PVTaskManager(16);
+	public static final DCTaskManager DCtaskManager = new DCTaskManager(8);
+	public static final PVTaskManager PVtaskManager = new PVTaskManager(8);
 	
 	/**
 	 * 
