@@ -114,7 +114,7 @@ public class WebCrawler {
 	    System.out.print ( ">>Selection: " );
 	    int option=in.nextInt();
 	    
-	    if(option>0 && option<8){
+	    if(option>0 && option<9){
 		    switch (option) {
 		      case 1:
 		    	//Directory Crawler starts here
@@ -145,6 +145,9 @@ public class WebCrawler {
 		    	  break;
 		      case 7:
 		    	  exit=true;
+		    	  break;
+		      case 8:
+		    	  updateDirectory();
 		    	  break;
 		    }
 	    }else{
@@ -302,5 +305,87 @@ public class WebCrawler {
 		
 	}
 
+	
+	private static void updateDirectory() {
+		String link;
+		String username1="patriciam97";
+		String username2="s1616316";
+		String username3="patriciam1997";
+		String username = username1;
+		int counter=0;
+		   ArrayList<String>  checkcoordinates= new ArrayList<String>();
+					checkcoordinates.add(null);
+					checkcoordinates.add(null);
+		while(true) {
+		if (username.equals(username1)){
+			username=username2;
+		}else if (username.equals(username2)){
+			username=username3;
+		}else {
+			username=username1;
+		}
+		MongoClientURI uri = new MongoClientURI(dbConn);
+		MongoClient mongoClient = new MongoClient(uri);
+		DB db = mongoClient.getDB("sunnyportal");
+		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
+		mongoLogger.setLevel(Level.SEVERE);
+		DBCollection collection = db.getCollection("DirectoryCollection");
+		DBCursor cursor = collection.find();
+		
+		while(cursor.hasNext()) {
+		   DBObject obj = cursor.next();
+		   if(obj.get("Coordinates")==null ||obj.get("Coordinates").equals(checkcoordinates) ) {
+		   DBObject updated=collection.findOne(obj.get("_id"));
+		   String country,city;
+		   country= obj.get("Country").toString();
+		   city=obj.get("City").toString();
+		   link="http://api.geonames.org/search?q="+city+"+"+country+"&username="+username;
+			try {
+				if(Jsoup.connect(link).timeout(20000000).get().selectFirst("totalResultsCount").text().equals("0")){
+					link="http://api.geonames.org/search?q="+country+"&username="+username;
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}catch (NullPointerException e) {
+				e.printStackTrace();
+			}
+			String lat = null;
+			try {
+				lat = Jsoup.connect(link).timeout(2000000).get().selectFirst("geonames geoname lat").text();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}catch (NullPointerException e) {
+				e.printStackTrace();
+			}
+			String lng = null;
+			try {
+				lng = Jsoup.connect(link).timeout(2000000).get().selectFirst("geonames geoname lng").text();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}catch (NullPointerException e) {
+				e.printStackTrace();
+			}
+		   try {
+				if(lat.equals(null)==false && (lng).equals(null)==false) {
+			
+				ArrayList<String>  coordinates= new ArrayList<String>();
+				coordinates.add(lat);
+				coordinates.add(lng);
+				updated.put("Coordinates",coordinates);
+				collection.update(obj, updated);
+				counter++;
+				System.out.println(counter);
+				System.out.println(lat+" "+lng);
+			}
+		   }catch (NullPointerException e) {
+				e.printStackTrace();
+			}
+		   }
+		}
+		}
+	}
 
 }
