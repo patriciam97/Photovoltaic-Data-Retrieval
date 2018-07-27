@@ -360,7 +360,7 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 			collection.insert(prof);
 			System.out.println(dtf.format(now)+": "+SystemTitle+" saved.");
 		}
-
+		mongoClient.close();
 	}
 	public void ClearDetails(){
 		SystemTitle=null;
