@@ -1,4 +1,5 @@
 package olderversions;
+import main.WebCrawler;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
@@ -16,6 +17,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import main.WebCrawler;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;

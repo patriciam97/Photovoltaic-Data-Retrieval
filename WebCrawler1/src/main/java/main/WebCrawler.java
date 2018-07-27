@@ -1,3 +1,4 @@
+package main;
 import io.restassured.RestAssured;
 import io.restassured.builder.ResponseBuilder;
 import io.restassured.path.xml.element.NodeChildren;
