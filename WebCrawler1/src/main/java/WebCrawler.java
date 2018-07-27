@@ -50,7 +50,7 @@ public class WebCrawler {
 	public static ArrayList<String> urls=null;
 	public static HashMap<String,String> corrections=new HashMap<String,String>();
 	public static final DCTaskManager DCtaskManager = new DCTaskManager(8);
-	public static final PVTaskManager PVtaskManager = new PVTaskManager(8);
+	public static final PVTaskManager PVtaskManager = new PVTaskManager(16);
 	
 	/**
 	 * 
@@ -215,7 +215,7 @@ public class WebCrawler {
 	private static void runPVSystemCrawler(String Country) throws IOException, ParseException, InterruptedException {
 		ArrayList<Thread> threads=new ArrayList<Thread>(); 
 		ArrayList<String> threadplants= new ArrayList<String>();
-		PVSystemCrawler prof;
+		CopyOfPVSystemCrawler prof;
 		//PVSystems Crawler starts here
   		List<DBObject> plants=RetrievePVPlants();
   		System.out.println("Only "+ plants.size()+" PV Systems are install in "+Country);
@@ -305,7 +305,8 @@ public class WebCrawler {
 		
 	}
 
-	
+	//this method was used just once to update the Dictionary Collection with the appropriate coordinates
+	//it was then added to DirectoryCrawler1.
 	private static void updateDirectory() {
 		String link;
 		String username1="patriciam97";

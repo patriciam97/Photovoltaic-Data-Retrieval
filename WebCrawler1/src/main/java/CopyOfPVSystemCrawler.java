@@ -340,8 +340,8 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 				.append("Sensors", Sensors).append("Image", imgLink)
 				.append("descinfo", descinfo)
 				.append("readingsUnit", readingsUnit)
-				.append("monthlyReadings", monthlyReadings)
-				.append("Coordinates",coordinates);
+				.append("monthlyReadings", monthlyReadings);
+				//.append("Coordinates",coordinates);
 		//check if this document already exists
 		DBObject exists=collection.findOne(plant);
 		if (exists!=null){ 
@@ -451,6 +451,7 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 		coordinates.add(lng);
 	}
 	public CopyOfPVSystemCrawler call() throws Exception {
+		System.out.println("["+threadName+"] working" );
 			try {
 				getProfileInfo(plant);
 			} catch (IOException e) {
@@ -474,7 +475,7 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 					e.printStackTrace();
 				}
 			}
-			getCoordinates();
+			//getCoordinates();
 			SaveInfo(); //saves or updates the system's information
 				
 		return this;

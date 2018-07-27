@@ -37,6 +37,7 @@ import com.mongodb.MongoClientURI;
 	private ArrayList<String> countryList = new ArrayList<String>();
 	private ArrayList<String> zipcodeList = new ArrayList<String>();
 	private ArrayList<String> systemList = new ArrayList<String>();
+	private ArrayList<String>  coordinates;
  	private static int counter=0;
  	private static int ids;
  	private int id;
@@ -68,7 +69,6 @@ import com.mongodb.MongoClientURI;
  		this.fromPg=frompg;
  		this.threadName=threadname;
  		this.id = ids++;
-
 
  	}
 
@@ -224,13 +224,15 @@ public ArrayList<String> getCountryList(){
 		DBCollection collection = db.getCollection("DirectoryCollection");
 		// creating a document for the PV System
 		for(int i=0;i<urls.size();i++) {
+				getCoordinates(cityList.get(i),countryList.get(i));
 				DBObject prof = new BasicDBObject("_id", urls.get(i))
 						.append("Timestamp", timestamp)
 						.append("System", systemList.get(i))
 						.append("Country", countryList.get(i))
 						.append("City", cityList.get(i))
 						.append("ZipCode",zipcodeList.get(i))
-						.append("SystemPower", powerList.get(i));
+						.append("SystemPower", powerList.get(i))
+						.append("Coordinates", coordinates);
 				//check if this document already exists
 				DBObject exists=collection.findOne(urls.get(i));
 				if (exists!=null){ 
@@ -248,6 +250,63 @@ public ArrayList<String> getCountryList(){
 					collection.insert(prof);
 					System.out.println("["+id+"]"+formatter.format(date)+": "+systemList.get(i)+" saved.");
 				}
+		}
+	}
+	public void getCoordinates(String city,String country){
+		String link;
+		String username1="patriciam97";
+		String username2="s1616316";
+		String username3="patriciam1997";
+		String username = username1;
+		boolean retrieved=false;
+		while(retrieved==false) {
+			if (username.equals(username1)){
+				username=username2;
+			}else if (username.equals(username2)){
+				username=username3;
+			}else {
+				username=username1;
+			}
+			link="http://api.geonames.org/search?q="+city+"+"+country+"&username="+username;
+			try {
+				if(Jsoup.connect(link).timeout(20000000).get().selectFirst("totalResultsCount").text().equals("0")){
+					link="http://api.geonames.org/search?q="+country+"&username="+username;
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}catch (NullPointerException e) {
+				e.printStackTrace();
+			}
+			String lat = null;
+			try {
+				lat = Jsoup.connect(link).timeout(2000000).get().selectFirst("geonames geoname lat").text();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}catch (NullPointerException e) {
+				e.printStackTrace();
+			}
+			String lng = null;
+			try {
+				lng = Jsoup.connect(link).timeout(2000000).get().selectFirst("geonames geoname lng").text();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}catch (NullPointerException e) {
+				e.printStackTrace();
+			}
+		   try {
+				if(lat.equals(null)==false && (lng).equals(null)==false) {
+			
+				coordinates= new ArrayList<String>();
+				coordinates.add(lat);
+				coordinates.add(lng);
+				retrieved=true;
+			}
+		   }catch (NullPointerException e) {
+				e.printStackTrace();
+		   }
 		}
 	}
 	/**
