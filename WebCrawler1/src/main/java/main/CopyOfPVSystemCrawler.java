@@ -342,7 +342,6 @@ public class CopyOfPVSystemCrawler implements Callable<CopyOfPVSystemCrawler>  {
 				.append("descinfo", descinfo)
 				.append("readingsUnit", readingsUnit)
 				.append("monthlyReadings", monthlyReadings);
-				//.append("Coordinates",coordinates);
 		//check if this document already exists
 		DBObject exists=collection.findOne(plant);
 		if (exists!=null){ 

@@ -28,6 +28,7 @@ import java.util.logging.Logger;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -111,7 +112,7 @@ public class WebCrawler {
 	private static void DisplayMenu() throws IOException, ParseException, InterruptedException {
 		Scanner in = new Scanner ( System.in );
 		System.out.println("***********************************************\n*                   SUNNY-BOT                 *\n*               by Patricia Milou             *\n*                                             *\n***********************************************");
-	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5)Coordinates \n6)Edit the Corrections Collection \n7) Exit" );
+	    System.out.println ( "Menu: \n1) Directory Crawling \n2) Profile Crawling\n3) Full Directory and Profile Crawling(all countries)\n4) Full Directory and Profile Crawling(specific country)\n5)Coordinates \n6)Fix Cyprus' Coordinates \n7) Exit" );
 	    System.out.print ( ">>Selection: " );
 	    int option=in.nextInt();
 	    
@@ -142,68 +143,66 @@ public class WebCrawler {
 		      case 5:
 		    	  break;
 		      case 6:
-		    	  ApplyCorrections();
+		    	  FixCyprusZipCodes();
 		    	  break;
 		      case 7:
 		    	  exit=true;
-		    	  break;
-		      case 8:
-		    	  updateDirectory();
 		    	  break;
 		    }
 	    }else{
 	    	System.out.println("Option not available.");
 	    }
 	}
-	private static void ApplyCorrections() throws IOException {
-		Scanner in;
-		String correction,city;
-		List<DBObject> locations;
-		DBCollection collection,collection2;
+	
+	private static void FixCyprusZipCodes() throws IOException {
 		DBCursor results;
-		
 		MongoClientURI uri = new MongoClientURI(dbConn);
 		MongoClient mongoClient = new MongoClient(uri);
 		DB db = mongoClient.getDB("sunnyportal");
 		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
 		mongoLogger.setLevel(Level.SEVERE);
-		collection = db.getCollection("CorrectionsCollection");
-		BasicDBObject query = new BasicDBObject();
-		results= collection.find(query);
-		locations= results.toArray();
-			for (DBObject l:locations){
-				if(l.containsField("Correction")==false){
-					String plant= l.get("plant").toString();
-					city=l.get("_id").toString();
-					System.out.println("Enter a correction for "+city+":");
-					in = new Scanner ( System.in );
-					correction= in.nextLine();
-					DBObject prof = new BasicDBObject("_id",city).append("Correction",correction).append("Plant",plant);
-					collection.update(l,prof);
-					System.out.println("Correction added.");
+		DBCollection collection = db.getCollection("DirectoryCollection");
+		BasicDBObject query = new BasicDBObject().append("Country","CYPRUS"); 
+		//  run the query and get all results
+        DBCursor cursor = collection.find(query);
+        List<DBObject> docs= cursor.toArray();
+        System.out.println(docs.size());
+        String link="http://cyprus.postcode.info/p/";
+        int counter=0;
+		for (DBObject l : docs){
+			DBObject prof=l;
+			if (l.containsField("ZipCode")){
+				String zip= l.get("ZipCode").toString();
+				if(zip.length()==4) {
+				System.out.println("Coordinates for "+zip);
+				doc = Jsoup.connect(link+zip).timeout(20000000).get();
+				System.out.println(link+zip);
+				String check1=doc.select("div[class=container] p").get(0).text();	// if"Found 0 postcodes ...." then error
+				String check2=doc.select("div[class=container] h2").get(0).text();   //if "search by City - Find postcodes in Cyprus" then error
+				
+				if(!check1.contains("Found 0 postcodes") && !check2.contains("Search by City")) {
+					String coordinates=doc.select("section[class=blog] div[class=cnt]").get(0).text();
+					String lat=coordinates.split(" ")[6].split(",")[0];
+					String lng=coordinates.split(" ")[7];
+					ArrayList<String> crds= new ArrayList<String>();
+					crds.add(lat);
+					crds.add(lng);
+					System.out.println(lat+""+lng);
+					DBObject profupdated=new BasicDBObject("_id",l.get("_id").toString())
+							.append("Timestamp",l.get(("Timestamp").toString()))
+							.append("System", l.get(("System").toString()))
+							.append("Country", l.get(("Country").toString()))
+							.append("City",l.get(("City").toString()))
+							.append("ZipCode",l.get(("ZipCode").toString()))
+							.append("SystemPower",l.get(("SystemPower").toString()))
+							.append("Coordinates",crds);
+				  collection.update(l,profupdated);
+				  counter++;
+				  System.out.println("["+counter+"] "+l.get("System").toString()+ " updated.");
+				}
 				}
 			}
-			System.out.println("Corrections are up to date.");
-			results= collection.find(query);
-			locations= results.toArray();
-			for (DBObject l:locations){
-				String plant= l.get("Plant").toString();
-				String City= l.get("Correction").toString();
-				collection = db.getCollection("ALLPVS");
-				System.out.println(plant);
-				DBObject prof=collection.findOne(plant);
-				String link="http://api.geonames.org/search?q="+City+"&username=patriciam97";
-				String lat=Jsoup.connect(link).timeout(20000).get().selectFirst("geonames geoname lat").text();
-				String lng=Jsoup.connect(link).timeout(20000).get().selectFirst("geonames geoname lng").text();
-				ArrayList<String> coordinates= new ArrayList<String>();
-				coordinates.add(lat);
-				coordinates.add(lng);
-				DBObject updated=prof;
-				updated.put("Coordinates",coordinates);
-				collection.update(prof,updated);
-				System.out.println((prof.get("System").toString())+" updated.");
-			}
-
+		}
 	}
 
 	/**
@@ -306,88 +305,5 @@ public class WebCrawler {
 		
 	}
 
-	//this method was used just once to update the Dictionary Collection with the appropriate coordinates
-	//it was then added to DirectoryCrawler1.
-	private static void updateDirectory() {
-		String link;
-		String username1="patriciam97";
-		String username2="s1616316";
-		String username3="patriciam1997";
-		String username = username1;
-		int counter=0;
-		   ArrayList<String>  checkcoordinates= new ArrayList<String>();
-					checkcoordinates.add(null);
-					checkcoordinates.add(null);
-		while(true) {
-		if (username.equals(username1)){
-			username=username2;
-		}else if (username.equals(username2)){
-			username=username3;
-		}else {
-			username=username1;
-		}
-		MongoClientURI uri = new MongoClientURI(dbConn);
-		MongoClient mongoClient = new MongoClient(uri);
-		DB db = mongoClient.getDB("sunnyportal");
-		Logger mongoLogger = Logger.getLogger("org.mongodb.driver");
-		mongoLogger.setLevel(Level.SEVERE);
-		DBCollection collection = db.getCollection("DirectoryCollection");
-		DBCursor cursor = collection.find();
-		
-		while(cursor.hasNext()) {
-		   DBObject obj = cursor.next();
-		   if(obj.get("Coordinates")==null ||obj.get("Coordinates").equals(checkcoordinates) ) {
-		   DBObject updated=collection.findOne(obj.get("_id"));
-		   String country,city;
-		   country= obj.get("Country").toString();
-		   city=obj.get("City").toString();
-		   link="http://api.geonames.org/search?q="+city+"+"+country+"&username="+username;
-			try {
-				if(Jsoup.connect(link).timeout(20000000).get().selectFirst("totalResultsCount").text().equals("0")){
-					link="http://api.geonames.org/search?q="+country+"&username="+username;
-				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}catch (NullPointerException e) {
-				e.printStackTrace();
-			}
-			String lat = null;
-			try {
-				lat = Jsoup.connect(link).timeout(2000000).get().selectFirst("geonames geoname lat").text();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}catch (NullPointerException e) {
-				e.printStackTrace();
-			}
-			String lng = null;
-			try {
-				lng = Jsoup.connect(link).timeout(2000000).get().selectFirst("geonames geoname lng").text();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}catch (NullPointerException e) {
-				e.printStackTrace();
-			}
-		   try {
-				if(lat.equals(null)==false && (lng).equals(null)==false) {
-			
-				ArrayList<String>  coordinates= new ArrayList<String>();
-				coordinates.add(lat);
-				coordinates.add(lng);
-				updated.put("Coordinates",coordinates);
-				collection.update(obj, updated);
-				counter++;
-				System.out.println(counter);
-				System.out.println(lat+" "+lng);
-			}
-		   }catch (NullPointerException e) {
-				e.printStackTrace();
-			}
-		   }
-		}
-		}
-	}
-
+	
 }
