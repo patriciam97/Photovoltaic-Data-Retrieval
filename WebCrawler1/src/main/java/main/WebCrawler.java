@@ -73,6 +73,7 @@ public class WebCrawler {
 		while(exit==false){
 			DisplayMenu();
 		}
+		
 		//calculates the elapsed time
 		long estimatedTime = (System.nanoTime() - startTime);
 		estimatedTime=TimeUnit.SECONDS.convert(estimatedTime, TimeUnit.NANOSECONDS);
