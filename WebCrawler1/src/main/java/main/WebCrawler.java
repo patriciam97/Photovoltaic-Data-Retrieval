@@ -82,7 +82,7 @@ public class WebCrawler {
 		long secs= estimatedTime % 60;
 		System.out.format("Elapsed Time: %d minutes and %d seconds.",mins, secs);
 	}			
-
+//used only once not needed
 	private static void getCorrections() {
 		MongoClientURI uri = new MongoClientURI(dbConn);
 		MongoClient mongoClient = new MongoClient(uri);
